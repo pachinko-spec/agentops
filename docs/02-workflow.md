@@ -97,11 +97,17 @@
 
 ## クロスモデル委譲
 
-Claude Code と Codex は、相互にCLI Wrapper経由で別モデルをサブエージェントとして使う。
+Claude Code と Codex は、相互に CLI Wrapper 経由で別モデルをサブエージェントとして使う。
+
+cross-review / cross-model review は、特定モデルを固定する運用ではない。現在の主エージェントとは別系列、別 CLI、別モデルファミリーの frontier reviewer を入れ、同じ設計や差分を別の推論系で確認するための思想である。Codex 主体なら Claude Code / Anthropic 系、Claude Code 主体なら Codex / OpenAI 系が候補になりうる。実際の model id は、対象 CLI の現在仕様と公式 docs を確認してから指定する。
+
+cross-review は高リスク設計だけに限定しない。新規機能追加、リファクタリング、依存追加、API 契約変更、デプロイ影響、レビュー指摘の修正後にも検討する。ただし全変更で必須にはせず、影響範囲、コスト、レイテンシ、既存検証の強さを見てオーケストレーターが採否を判断する。
+
+委譲先 reviewer は所見を出す。採否、修正範囲、延期、停止、統合判断は主 orchestrator が持つ。
 
 ```text
 agentops delegate --to codex --role review_frontier --model <codex-model-id> --effort xhigh --input .agentops/plans/current.md
-agentops delegate --to claude --role architect_frontier --model <claude-model-id> --effort xhigh --input .agentops/plans/current.md
+agentops delegate --to claude --role review_frontier --model <claude-model-id> --effort xhigh --input .agentops/plans/current.md
 ```
 
 委譲結果は `.agentops/runs/{run_id}/` に保存する。
