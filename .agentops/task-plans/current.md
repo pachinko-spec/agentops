@@ -17,9 +17,11 @@ timezone: Asia/Tokyo
 4. README と主要 docs の語彙を「参照資料」「判断材料」「反映候補」「採否を判断して反映」へ寄せる。
 5. `rules/`、`skills/`、`workflows/` の表現は、構造整理に踏み込む場合は次タスクへ分ける。
 6. `.agentops/tasks/002-readme-and-docs-language.md` の状態と残タスクを更新する。
-7. 差分を確認する。
-8. `git diff --check` と `scripts/agentops-watch check --projects config/projects.yml` を実行する。
-9. commit、push、PR作成、GitHub上でのmerge、main同期確認を行う。
+7. `002` が完了した場合は、完了済み task と今回の `current.md` を `.agentops/archive/<plan-id>/` へ移す。
+8. 次に着手する task に合わせて `.agentops/task-plans/current.md` と `.agentops/prompts/next-session.md` を更新する。
+9. 差分を確認する。
+10. `git diff --check` と `scripts/agentops-watch check --projects config/projects.yml` を実行する。
+11. commit、push、PR作成、GitHub上でのmerge、main同期確認を行う。
 
 ## 今回は行わないこと
 
