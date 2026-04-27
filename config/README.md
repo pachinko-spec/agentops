@@ -12,6 +12,7 @@ secretやDiscord webhook URLはこのリポジトリに保存しません。
 - `projects.yml`: `agentops-watch` の監視対象プロジェクト
 - `freshness-sources.yml`: 陳腐化チェック対象の一次情報
 - `model-catalog.yml`: 論理ロールと候補モデルの対応表
+- `harness.yml`: project local harness spec の雛形
 
 ## 注意
 

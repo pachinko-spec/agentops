@@ -19,6 +19,8 @@
 15. リモート反映と同期確認
 16. マージ後報告
 
+長時間の委譲、再現が必要なバグ修正、UI/外部CLI/MCPを使う検証、モデルやpromptの退行確認では、調査後に harness spec を作る。小さな修正では既存の DbC とテスト条件で足りる。詳細は [Harness Engineering](12-harness-engineering.md) を参照する。
+
 ## ブランチ運用
 
 - 作業前に必ず現在ブランチを確認する。
@@ -83,3 +85,5 @@ agentops delegate --to claude --role architect_frontier --model <claude-model-id
   result.md
   artifacts/
 ```
+
+必要な場合は、委譲依頼の `request.md` に `.agentops/harnesses/<task>.yml` などの harness spec パスを明記する。

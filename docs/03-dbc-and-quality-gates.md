@@ -4,6 +4,8 @@
 
 各タスクは次を明示する。
 
+DbC はすべてのタスクに使う軽量な契約である。再現性、artifact、oracle、sandbox 条件まで必要な作業では、DbC を task spec と実行条件へ展開した harness spec を使う。詳細は [Harness Engineering](12-harness-engineering.md) を参照する。
+
 ```md
 ## 前提条件
 - 触ってよい範囲

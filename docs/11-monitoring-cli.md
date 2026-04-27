@@ -38,6 +38,8 @@ scripts/agentops-watch notify --projects config/projects.yml
 
 GitHub API、CI 詳細、reviewDecision、mergeable、package registry の取得は今後の拡張点とする。
 
+Harness spec の実行は監視 CLI の責務ではない。監視 CLI は `.agentops/runs/`、`.agentops/tasks/`、`.agentops/handoffs/`、freshness 設定を読み、harness の実行結果や artifact が run log として残っているかを将来確認対象にできる。
+
 ## 設定
 
 `config/projects.yml`:

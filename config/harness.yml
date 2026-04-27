@@ -1,0 +1,181 @@
+# AgentOps harness template.
+# このファイルはコピー元の雛形です。実プロジェクトでは .agentops/harness.yml
+# または .agentops/harnesses/<task>.yml に置き、プロジェクト固有のコマンドへ置き換えます。
+
+schema_version: 1
+scope: global-template
+last_reviewed: 2026-04-27
+time_zone: Asia/Tokyo
+
+placement_policy:
+  template_path: config/harness.yml
+  project_default_path: .agentops/harness.yml
+  task_specs_path: .agentops/harnesses/
+  eval_specs_path: .agentops/evals/
+  run_artifacts_path: .agentops/runs/{run_id}/artifacts/
+
+usage_policy:
+  required_when:
+    - 長時間の agent run を委譲する
+    - 別モデルまたは別セッションへ引き継ぐ
+    - UI、browser、simulator、MCP、外部 CLI を使う
+    - バグ再現と修正後確認の artifact が必要
+    - モデル、prompt、workflow の退行を測る
+    - security、data migration、public API など高リスク変更を扱う
+  optional_when:
+    - 既存テストだけでは成功条件が曖昧な中規模変更
+    - 手順を次回も再利用しそうな調査や検証
+  avoid_when:
+    - typo、リンク修正、短い docs 更新だけ
+    - 既存の DbC とテストコマンドで十分に検証できる
+    - oracle や fixture を短時間で定義できない
+    - secret や本番データを扱わないと再現できない
+
+defaults:
+  branch_policy:
+    protected_branches:
+      - main
+      - master
+      - develop
+    work_branch_prefixes:
+      - codex/
+      - claude/
+    direct_push_to_protected: forbidden
+
+  sandbox:
+    network: off_by_default
+    allowed_domains: []
+    allowed_http_methods:
+      - GET
+    writable_paths:
+      - .
+      - .agentops/
+    forbidden_paths:
+      - .env
+      - .git/
+      - secrets/
+    secret_policy:
+      repository_storage: forbidden
+      run_log_storage: forbidden
+      artifact_storage: forbidden
+      setup_only_secrets: remove_before_agent_phase
+
+  commands:
+    allowed_read_only:
+      - git status --short --branch
+      - git diff --check
+      - rg --files
+      - rg <pattern>
+      - sed -n <range> <file>
+    allowed_validation:
+      - python3 -m compileall tools
+      - scripts/agentops doctor
+      - scripts/agentops-watch check --projects config/projects.yml
+    require_confirmation:
+      - package install
+      - network access
+      - database migration
+      - git push
+      - external service write
+    forbidden:
+      - rm -rf
+      - git reset --hard
+      - git clean -fdx
+      - printing secrets
+      - posting repository data to untrusted URLs
+
+  artifacts:
+    save:
+      - request.md
+      - status.json
+      - stdout.log
+      - stderr.log
+      - result.md
+      - test reports
+      - screenshots or videos when UI behavior matters
+      - reproduction notes
+    never_save:
+      - secrets
+      - access tokens
+      - .env files
+      - production personal data
+      - license-unknown external content
+      - dependency caches
+
+task_template:
+  id: example-task
+  title: "例: 監視 CLI の freshness 判定を検証する"
+  owner: human
+  last_reviewed: 2026-04-27
+  intent: 何を達成するかを 1-3 行で書く。
+  scope:
+    read:
+      - README.md
+      - docs/
+      - tools/
+      - scripts/
+      - config/
+    write:
+      - docs/
+      - config/
+      - tools/
+      - scripts/
+    out_of_scope:
+      - 本番 secret の参照
+      - main への直 push
+      - スコープ外リファクタ
+  setup:
+    commands:
+      - git status --short --branch
+    fixtures:
+      - path: .agentops/fixtures/example/
+        required: false
+        notes: 必要な場合だけプロジェクト側で作る。
+    environment:
+      required:
+        - Python 3
+      optional: []
+  execution:
+    allowed_commands:
+      - python3 -m compileall tools
+      - scripts/agentops-watch check --projects config/projects.yml
+    timeout_minutes: 30
+    retry_limit: 2
+  oracle:
+    success_criteria:
+      - 変更対象の docs と README のリンクが一致している
+      - 検証コマンドが exit code 0
+      - 未解決リスクが result.md または PR 本文に記録されている
+    checks:
+      - command: python3 -m compileall tools
+        expected_exit_code: 0
+      - command: scripts/agentops-watch check --projects config/projects.yml
+        expected_exit_code: 0
+  teardown:
+    commands: []
+    cleanup:
+      - secret を含む一時ファイルを残さない
+  replay:
+    required:
+      - commit_or_branch
+      - harness_spec_path
+      - setup_commands
+      - oracle_checks
+      - artifact_paths
+    notes: 完全再現が重い場合は、最小再現と本番相当再現を分ける。
+  artifacts:
+    run_dir: .agentops/runs/{run_id}/
+    required:
+      - request.md
+      - status.json
+      - result.md
+    optional:
+      - stdout.log
+      - stderr.log
+      - artifacts/
+  stop_conditions:
+    - oracle が定義できない
+    - fixture 作成が実装より重い
+    - network allowlist を安全に絞れない
+    - テスト失敗修正が 2 周を超えた
+    - レビュー修正が 2 周を超えた

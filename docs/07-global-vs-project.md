@@ -11,6 +11,7 @@
 - クロスモデル委譲の基本方針
 - ドキュメント更新必須ルール
 - 汎用skills、workflow、hooks
+- harness の考え方と共通テンプレート
 
 ## プロジェクト設定に置くもの
 
@@ -18,7 +19,9 @@
 - 使用スタックとバージョン
 - デプロイ手順
 - プロジェクト固有の禁止事項
+- プロジェクト固有の harness spec、fixture、oracle、sandbox/network allowlist
 - `.agentops/tasks/`、`.agentops/plans/`、`.agentops/runs/`
+- `.agentops/harness.yml`、`.agentops/harnesses/`、`.agentops/evals/`
 - PRテンプレート、Issueテンプレート
 - プロジェクト固有のhooks、skills、MCP設定
 
@@ -40,3 +43,5 @@
 
 実設定雛形は `config/claude/CLAUDE.md` と `config/codex/AGENTS.md` に置く。
 詳細は [実設定雛形](08-config-templates.md) を参照する。
+
+Harness の共通方針は [Harness Engineering](12-harness-engineering.md)、コピー元の雛形は `config/harness.yml` を参照する。

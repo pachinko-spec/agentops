@@ -5,6 +5,8 @@
 `agentops` は Claude Code / Codex を相互に呼び出すための薄い wrapper である。
 依頼内容、実行コマンド、stdout/stderr、結果、状態を `.agentops/runs/` に保存し、セッションをまたいだ追跡を可能にする。
 
+再現性が必要な委譲では、request に harness spec のパスを含める。harness は入力契約、CLI Wrapper は実行記録という責務に分ける。詳細は [Harness Engineering](12-harness-engineering.md) を参照する。
+
 ## コマンド
 
 ```text
@@ -88,6 +90,7 @@ export AGENTOPS_CLAUDE_CMD='claude --model {model} --print'
 
 - `.agentops/runs/` に書き込める。
 - 実実行する場合は対象 CLI がインストール済みで、コマンドテンプレートが現在の仕様に合っている。
+- harness spec を使う場合は、参照先がプロジェクトローカルに存在し、setup、oracle、artifact 方針が読める。
 
 不変条件:
 

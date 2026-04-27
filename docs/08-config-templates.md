@@ -12,12 +12,15 @@
 | 監視対象 | `config/projects.yml` | このリポジトリ、または監視ホスト側 |
 | 陳腐化ソース | `config/freshness-sources.yml` | このリポジトリ、または監視ホスト側 |
 | モデルカタログ | `config/model-catalog.yml` | 定期更新する運用ファイル |
+| harness | `config/harness.yml` | 各プロジェクトの `.agentops/harness.yml` または `.agentops/harnesses/<task>.yml` |
 
 ## グローバル設定の境界
 
 グローバル設定には、日本語運用、ブランチ保護、DbC、レビュー修正ループ、最新性確認、ドキュメント更新必須ルールだけを置く。
 
 プロジェクト固有のビルド、テスト、デプロイ、禁止事項、MCP、hook の詳細は各プロジェクト側に置く。
+
+harness の実体もプロジェクト固有に置く。`config/harness.yml` は、task spec、setup、allowed commands、fixtures、oracle、artifact、replay、sandbox/network/secret 条件を揃えるためのコピー元に留める。
 
 ## モデル名の扱い
 
