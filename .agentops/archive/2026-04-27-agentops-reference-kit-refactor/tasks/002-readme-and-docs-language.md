@@ -1,7 +1,7 @@
 # 002 readme and docs language
 
 parent_plan: 2026-04-27-agentops-reference-kit-refactor
-status: pending
+status: completed
 
 ## 実行内容
 
@@ -40,3 +40,9 @@ status: pending
 
 - 語彙変更だけでなく構造変更が必要になり、ユーザー判断が必要になる。
 - 既存スクリプトや docs 参照と矛盾する。
+
+## 完了メモ
+
+- README と主要 docs の語彙を、参照資料、判断材料、反映候補、採否判断の表現へ寄せた。
+- `docs/` は現役参照資料、`decisions/` は判断履歴として読む位置づけを README で明確にした。
+- `rules/`、`skills/`、`workflows/` に残る「正本」「投影物」表現は、構造整理を扱う 003 の対象として残した。

@@ -1,10 +1,10 @@
 # 実設定雛形
 
-`docs/`、`rules/`、`skills/`、`workflows/` は、Claude Code / Codex のグローバル設定を見直すときの参照資料です。`config/` は Claude Code、Codex、監視CLI、harness などへ反映するための雛形であり、実環境と対象 CLI の仕様を確認したうえで、必要な範囲だけ要約・調整して使います。
+`docs/`、`rules/`、`skills/`、`workflows/` は、Claude Code / Codex のグローバル設定を見直すときの参照資料です。`config/` は Claude Code、Codex、監視CLI、harness などで使う反映候補の雛形であり、実環境と対象 CLI の仕様を確認したうえで、必要な範囲だけ採否を判断し、要約・調整して使います。
 
 このリポジトリでは、設計思想だけでなく Claude Code / Codex に投入できる雛形を `config/` に置く。
 
-雛形を編集しても実際のグローバル設定には自動反映されない。運用へ反映する場合は、配置先の実ファイル、MCP 設定、shell profile、GitHub リモート設定を確認し、対象クライアントで読み込み状態まで検証する。
+雛形を編集しても実際のグローバル設定には自動反映されない。運用へ取り込む場合は、配置先の実ファイル、MCP 設定、shell profile、GitHub リモート設定を確認し、対象クライアントで読み込み状態まで検証する。
 
 ## 配置先
 

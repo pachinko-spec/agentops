@@ -1,4 +1,4 @@
-# Task Plan: README and docs language cleanup
+# Task Plan: structure refactor plan
 
 plan_id: 2026-04-27-agentops-reference-kit-refactor
 status: pending
@@ -7,17 +7,17 @@ timezone: Asia/Tokyo
 
 ## 今回セッションの目的
 
-`.agentops/tasks/002-readme-and-docs-language.md` から着手し、README と主要 docs に残る強すぎる語彙を整理する。
+`.agentops/tasks/003-structure-refactor-plan.md` から着手し、`rules/`、`skills/`、`workflows/` を残す、縮小する、移す、archive する方針を設計する。
 
 ## 実行順
 
 1. 作業ブランチを切る。
-2. `.agentops/tasks/002-readme-and-docs-language.md` を読む。
-3. `rg "正本|投影物|機械的" README.md docs rules workflows config` で残存箇所を確認する。
-4. README と主要 docs の語彙を「参照資料」「判断材料」「反映候補」「採否を判断して反映」へ寄せる。
-5. `rules/`、`skills/`、`workflows/` の表現は、構造整理に踏み込む場合は次タスクへ分ける。
-6. `.agentops/tasks/002-readme-and-docs-language.md` の状態と残タスクを更新する。
-7. `002` が完了した場合は、完了済み task と今回の `current.md` を `.agentops/archive/<plan-id>/` へ移す。
+2. `.agentops/tasks/003-structure-refactor-plan.md` を読む。
+3. `rules/`、`skills/`、`workflows/` のファイル一覧と README、docs、config からの参照関係を `rg` で確認する。
+4. 現役参照資料として残すもの、最小見本として `examples/` に移すもの、CLI 用テンプレートとして `templates/` に移すもの、チェックリストとして `checklists/` に移すもの、archive 候補に分類する。
+5. 移動や削除は実施せず、影響範囲と提案方針を文書化する。
+6. `.agentops/tasks/003-structure-refactor-plan.md` の状態と残タスクを更新する。
+7. `003` が完了した場合は、完了済み task と今回の `current.md` を `.agentops/archive/<plan-id>/` へ移す。
 8. 次に着手する task に合わせて `.agentops/task-plans/current.md` と `.agentops/prompts/next-session.md` を更新する。
 9. 差分を確認する。
 10. `git diff --check` と `scripts/agentops-watch check --projects config/projects.yml` を実行する。
@@ -31,6 +31,6 @@ timezone: Asia/Tokyo
 
 ## 停止条件
 
-- 語彙変更だけでなく構造変更が必要になり、ユーザー判断が必要になる。
-- 既存スクリプトや docs 参照と矛盾する。
-- `rules/`、`skills/`、`workflows/` の扱いについて追加の設計判断が必要になる。
+- 移動先ディレクトリ構成に合意がない。
+- 既存の `skills/` や `workflows/` を削ると、ユーザーが期待する参照資料が失われる。
+- 参照関係が広く、分類だけでは安全な次アクションを決められない。
