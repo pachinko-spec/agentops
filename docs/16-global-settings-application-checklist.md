@@ -4,7 +4,7 @@
 
 このチェックリストは、`agentops` の設計思想と雛形を Claude Code / Codex の実グローバル設定へ反映するときに使う。反映対象は `CLAUDE.md` / `AGENTS.md` だけではなく、settings、config、MCP、hooks、skills、subagents、permissions、sandbox、approval、shell profile、GitHub remote を含めて確認する。
 
-このリポジトリの docs、rules、skills、workflows、config は参照資料と反映候補であり、そのまま機械的にコピーしない。反映時点の公式 docs、CLI の `--help`、対象環境の実設定を確認して、採用する内容、調整する内容、見送る内容を計画する。
+このリポジトリの docs、rules、skills、workflows、templates、config は参照資料と反映候補であり、そのまま機械的にコピーしない。`rules/`、`skills/`、`workflows/` は候補カタログ、`templates/` は生成雛形として扱う。反映時点の公式 docs、CLI の `--help`、対象環境の実設定を確認して、採用する内容、調整する内容、見送る内容を計画する。
 
 ## 反映前
 
@@ -18,9 +18,10 @@
 
 - [ ] 安定した作業思想、参照優先順位、ユーザー個人の開発方針、停止条件、検証方針だけを置いた。
 - [ ] 実プロジェクト固有の test / build / deploy / rollback コマンド、secret、環境名、remote URL を書いていない。
-- [ ] `agentops` の `rules/`、`skills/`、`workflows/` は参照候補として扱い、機械的に全量反映する表現にしていない。
+- [ ] `agentops` の `rules/`、`skills/`、`workflows/` は候補カタログとして扱い、機械的に全量反映する表現にしていない。
+- [ ] `templates/claude/` または `templates/codex/` を素材として使う場合も、対象 CLI の現在仕様に合わせて生成し直した。
 - [ ] CLI 固有の settings / config / hooks / permission / sandbox / approval の具体値を、本文へ固定しすぎていない。
-- [ ] 長い手順、観点別チェック、反復的な作業は、必要に応じて skills、workflows、checklists へ分ける方針にした。
+- [ ] 長い手順、観点別チェック、反復的な作業は、必要に応じて skills、workflows、project docs、`.agentops` へ分ける方針にした。
 - [ ] 反映後に、対象 CLI が実際にグローバル指示とプロジェクト指示を読んでいることを確認する手順を書いた。
 
 ## MCP
@@ -42,7 +43,8 @@
 ## skills / subagents
 
 - [ ] global に置く skill / subagent と project に置く skill / subagent を分けた。
-- [ ] `docs/15-reference-kit-structure.md` の分類案を使い、`rules/`、`skills/`、`workflows/` を移動せずに、採用候補だけを選んだ。
+- [ ] `rules/catalog.md`、`skills/catalog.md`、`workflows/catalog.md` を使い、採用候補だけを選んだ。
+- [ ] `templates/claude/`、`templates/codex/` の雛形を、公式 docs と実環境に合わせて調整した。
 - [ ] skill は短い `description`、明確な発火条件、必要最小限の supporting files にした。
 - [ ] 副作用がある skill は自動起動させず、手動起動や追加確認を前提にした。
 - [ ] subagent は役割、入力、出力、tool 権限、MCP tool 継承、メインエージェントの統合責任を明確にした。

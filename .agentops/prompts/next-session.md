@@ -8,16 +8,18 @@
 
 - README.md
 - decisions/README.md
+- decisions/2026-04-27-reference-kit-catalog-pivot.md
 - docs/15-reference-kit-structure.md
 - docs/16-global-settings-application-checklist.md
-- .agentops/archive/2026-04-27-agentops-reference-kit-refactor/plan.md
+- .agentops/archive/2026-04-27-reference-kit-catalog-pivot/plan.md
 
 前回完了した作業:
 
-- `2026-04-27-agentops-reference-kit-refactor` は完了済み。
-- 完了済み plan、task-plan、task は `.agentops/archive/2026-04-27-agentops-reference-kit-refactor/` にある。
-- `docs/15-reference-kit-structure.md` に、`rules/`、`skills/`、`workflows/` の移行候補、archive 方針、参照切れ確認方法がある。
-- 参照キット本体の大規模移動や削除は行っていない。実移動する場合は、対象ファイル一覧、移動先、影響範囲、検証方法を提示してユーザー承認を得る。
+- `rules/`、`skills/`、`workflows/` を完成品集から候補カタログへ転換する。
+- 旧実体を `archive/reference-kit-v1/` へ退避する。
+- `templates/claude/`、`templates/codex/`、`templates/agentops/` を作る。
+- README、docs、config の参照を新構造へ更新する。
+- 完了済み plan、task-plan、task は `.agentops/archive/2026-04-27-reference-kit-catalog-pivot/` にある。
 
 新しい作業がある場合:
 
@@ -31,6 +33,5 @@
 - 日本語で応答する。
 - 必ず作業ブランチを切る。
 - 実装・ファイル編集前に、今回セッションの小分け計画を提示して承認を得る。
-- 大きな削除や移動は、方針提示とユーザー承認なしに行わない。
-- `rules/`、`skills/`、`workflows/` の構造整理は、`docs/15-reference-kit-structure.md` の分類案を入力として扱う。
+- `rules/`、`skills/`、`workflows/` の現役入口は候補カタログにする。
 - commit / push / PR 作成 / GitHub 上での merge / main 同期確認まで行う。

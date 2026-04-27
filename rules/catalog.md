@@ -1,0 +1,24 @@
+# rule catalog
+
+AI エージェントがグローバル設定やプロジェクト設定へ取り込むか判断する rule 候補です。実際に置く文言、粒度、ファイル形式は対象 CLI の公式 docs と実設定を確認して調整します。
+
+| 候補名 | 用途 | 主な適用先 | 採用判断 |
+| --- | --- | --- | --- |
+| language-policy | 応答、commit、PR、レビュー、handoff を日本語中心にする | global | 日本語話者の個人開発では global 候補 |
+| planning-approval | 実装、削除、外部反映前に計画と承認を求める | global / project | 大きな変更が多い環境では global 候補 |
+| git-and-branch-policy | 作業ブランチ、PR、merge、main 同期を統一する | global / project | GitHub 運用が前提なら global 候補 |
+| project-scope | 実作業対象、dotfiles 除外、プロジェクト固有設定優先を明確にする | global | 個人開発の境界として global 候補 |
+| freshness-policy | ライブラリ、CLI、API、モデルの最新性を公式情報で確認する | global | 変化の速い技術スタックでは global 候補 |
+| documentation-policy | 実装差分に応じて README、docs、runbook、release notes を更新する | global / project | docs 更新漏れが課題なら global 候補 |
+| review-policy | correctness、security、regression、tests を優先してレビューする | global / project | レビュー品質を上げたい場合に採用 |
+| design-policy | 前提条件、非目的、完了条件、停止条件を設計時に明確にする | global / project | 設計なし実装を避けたい場合に採用 |
+| deployment-target-policy | Cloudflare、Xserver、GCP、ローカルの選定軸を確認する | project | デプロイ先が決まるプロジェクトで採用 |
+| secret-policy | secret を diff、ログ、PR、handoff に出さない | global | 原則 global 候補 |
+| destructive-operation-policy | 削除、reset、外部公開、課金変更前に確認する | global | 原則 global 候補 |
+| agentops-task-policy | `.agentops` の plan、task、archive を使い、完了済み task を未完了入口に残さない | project / global | 長い作業を分割する運用で採用 |
+
+## 生成時の注意
+
+- Codex の `Rules` は sandbox 外コマンド許可の意味を持つため、このカタログの rule と混同しない。
+- `AGENTS.md` / `CLAUDE.md` には安定した作業思想だけを置き、長い手順や観点別チェックは Skill、workflow、template へ分ける。
+- 実プロジェクト固有の test、build、deploy、rollback、secret、remote URL は global ではなく project 側へ置く。
