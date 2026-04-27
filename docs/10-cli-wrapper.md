@@ -17,6 +17,12 @@ scripts/agentops runs
 scripts/agentops doctor
 ```
 
+## 入力境界
+
+- `--run-id` は ASCII の英数字、`-`、`_` を中心にした slug へ正規化し、`.agentops/runs/` 配下にだけ run directory を作る。`../` などの path traversal は run path としては使われない。明示した run_id が既存の場合は、過去の run log を上書きせずエラーにする。
+- `--input` は `--project` で指定した project root 配下だけを読む。相対パスは project root 基準で解決し、絶対パスや symlink が project 外へ出る場合はエラーにする。
+- `--effort` は `low`、`medium`、`high`、`xhigh`、`max` のみ受け付ける。対象 CLI 側の対応状況はバージョンに依存するため、実行前に対象 CLI の `--help` や公式 docs で確認する。
+
 ## 実行記録
 
 ```text
@@ -58,6 +64,7 @@ scripts/agentops doctor
 既定コマンドは最小の雛形であり、実運用では公式 docs と CLI 現物で現在の仕様を確認してから環境変数で上書きする。
 
 Codex CLI 0.125.0 では `codex exec --reasoning-effort ...` は受け付けず、`-c model_reasoning_effort=...` で推論レベルを渡す。Claude Code 2.1.119 では `--effort` と `--print` を併用する。
+これより古い CLI では既定 template が動かない可能性があるため、対象バージョンに合わせて `AGENTOPS_CODEX_CMD` / `AGENTOPS_CLAUDE_CMD` または `--command-template` で明示的に上書きする。
 
 ```sh
 export AGENTOPS_CODEX_CMD='codex exec {model_arg} -c model_reasoning_effort={effort} -'
@@ -76,6 +83,14 @@ export AGENTOPS_CLAUDE_CMD='claude {model_arg} --effort {effort} --print'
 | `{request_file}` | 生成された依頼ファイル |
 | `{run_dir}` | 実行記録ディレクトリ |
 
+template 変数の値は argv 注入を避けるため shell quoting してから `shlex.split` する。未知の `{var}` や format 修飾はエラーにし、利用可能な変数名を表示する。
+
+`--model` を組み立てる場合は `{model}` より `{model_arg}` を推奨する。`{model_arg}` は `--model <model>` 全体を生成し、`--model` 未指定時は空になるため、空の model 値で次の option を誤って消費しにくい。
+
+依頼本文は既定では stdin で外部 CLI に渡す。stdin を読まない CLI に切り替える場合は、template 側で `{request_file}` を参照する。
+
+`--command-template` や `AGENTOPS_*_CMD` に secret、token、API key、auth file の中身を書かない。展開後の command は `status.json` と dry-run の `result.md` に平文で残る。
+
 ## 状態
 
 | state | 意味 |
@@ -83,7 +98,7 @@ export AGENTOPS_CLAUDE_CMD='claude {model_arg} --effort {effort} --print'
 | `dry_run` | 記録だけ作成し、外部 CLI は実行していない |
 | `running` | 外部 CLI 実行中 |
 | `succeeded` | exit code 0 で完了 |
-| `failed` | exit code 非 0 またはコマンド不明 |
+| `failed` | exit code 非 0、コマンド不明、template error、起動時の OS error |
 | `timeout` | timeout で停止 |
 
 ## smoke test の実行環境

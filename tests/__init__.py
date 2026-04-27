@@ -1,0 +1,1 @@
+"""agentops CLI regression tests."""

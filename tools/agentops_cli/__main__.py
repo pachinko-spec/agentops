@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import shlex
+import string
 import subprocess
 import sys
 from datetime import datetime
@@ -20,6 +21,25 @@ DEFAULT_TEMPLATES = {
     "codex": "codex exec {model_arg} -c model_reasoning_effort={effort} -",
     "claude": "claude {model_arg} --effort {effort} --print",
 }
+
+ALLOWED_EFFORTS = ("low", "medium", "high", "xhigh", "max")
+SUPPORTED_TEMPLATE_VARS = (
+    "to",
+    "role",
+    "model",
+    "model_arg",
+    "effort",
+    "request_file",
+    "run_dir",
+)
+
+
+class AgentOpsError(Exception):
+    """利用者へ簡潔に返す agentops wrapper の入力・運用エラー。"""
+
+
+class CommandTemplateError(AgentOpsError):
+    """外部 CLI command template の解決に失敗した。"""
 
 
 def jst_now() -> datetime:
@@ -38,16 +58,79 @@ def jst_run_id_stamp() -> str:
 
 
 def slug(value: str) -> str:
-    """role 名などを run_id に使いやすい ASCII 寄りの文字列へ整形する。"""
+    """role 名などを run_id に使いやすい ASCII の文字列へ整形する。"""
     safe = []
     for char in value.lower():
-        if char.isalnum():
+        if "a" <= char <= "z" or "0" <= char <= "9":
             safe.append(char)
         elif char in ("-", "_"):
             safe.append(char)
         elif char.isspace() or char == "/":
             safe.append("-")
     return "".join(safe).strip("-") or "run"
+
+
+def validate_effort(effort: str) -> None:
+    """wrapper が受け付ける reasoning effort を明示的に絞る。"""
+    if effort not in ALLOWED_EFFORTS:
+        allowed = ", ".join(ALLOWED_EFFORTS)
+        raise AgentOpsError(f"invalid --effort {effort!r}; expected one of: {allowed}")
+
+
+def sanitize_run_id(value: str) -> str:
+    """明示 run_id を安全な slug に正規化する。"""
+    run_id = slug(value)
+    has_safe_char = any(
+        "a" <= char.lower() <= "z" or "0" <= char <= "9" or char in ("-", "_") for char in value
+    )
+    if run_id == "run" and not has_safe_char:
+        raise AgentOpsError("--run-id must contain an ASCII letter, digit, '-' or '_'")
+    return run_id
+
+
+def ensure_inside(base: Path, target: Path, label: str) -> None:
+    """target が base 配下に解決されることを確認する。"""
+    try:
+        target.relative_to(base)
+    except ValueError as exc:
+        raise AgentOpsError(f"{label} must stay inside {base}: {target}") from exc
+
+
+def resolve_input_path(project: Path, raw_path: str) -> Path:
+    """--input を project root 配下の実パスへ解決する。"""
+    input_path = Path(raw_path)
+    if not input_path.is_absolute():
+        input_path = project / input_path
+    resolved = input_path.resolve()
+    ensure_inside(project, resolved, "--input")
+    return resolved
+
+
+def resolve_run_dir(runs_dir: Path, run_id: str) -> Path:
+    """run_dir が .agentops/runs の外へ出ないことを確認して返す。"""
+    base = runs_dir.resolve()
+    run_dir = (runs_dir / run_id).resolve()
+    ensure_inside(base, run_dir, "--run-id")
+    return run_dir
+
+
+def allocate_run_dir(runs_dir: Path, preferred_run_id: str, *, explicit: bool) -> tuple[str, Path]:
+    """既存 run を上書きしない run_id と run_dir を選ぶ。"""
+    run_dir = resolve_run_dir(runs_dir, preferred_run_id)
+    if explicit:
+        if run_dir.exists():
+            raise AgentOpsError(f"--run-id already exists: {preferred_run_id}")
+        return preferred_run_id, run_dir
+
+    if not run_dir.exists():
+        return preferred_run_id, run_dir
+
+    for index in range(2, 100):
+        candidate = f"{preferred_run_id}-{index}"
+        candidate_dir = resolve_run_dir(runs_dir, candidate)
+        if not candidate_dir.exists():
+            return candidate, candidate_dir
+    raise AgentOpsError(f"could not allocate a unique run_id for {preferred_run_id!r}")
 
 
 def write_json(path: Path, data: dict[str, Any]) -> None:
@@ -62,11 +145,11 @@ def read_input(args: argparse.Namespace, project: Path) -> str:
     """
     parts: list[str] = []
     if args.input:
-        input_path = Path(args.input)
-        if not input_path.is_absolute():
-            # 相対入力は、呼び出し元 cwd ではなく委譲対象プロジェクトに属する。
-            input_path = project / input_path
-        parts.append(input_path.read_text(encoding="utf-8"))
+        input_path = resolve_input_path(project, args.input)
+        try:
+            parts.append(input_path.read_text(encoding="utf-8"))
+        except OSError as exc:
+            raise AgentOpsError(f"failed to read --input {args.input!r}: {exc}") from exc
     if args.message:
         parts.append(args.message)
     if not parts and not sys.stdin.isatty():
@@ -103,54 +186,116 @@ def command_template(args: argparse.Namespace) -> str:
     return os.environ.get(env_name, DEFAULT_TEMPLATES[args.to])
 
 
-def expand_command(template: str, args: argparse.Namespace, request_file: Path, run_dir: Path) -> list[str]:
-    """テンプレート変数を埋め込み、subprocess に渡せる argv 配列へ変換する。"""
+def template_values(args: argparse.Namespace, request_file: Path, run_dir: Path) -> dict[str, str]:
+    """template 展開値を shlex 用に quote した文字列として用意する。"""
     model_arg = f"--model {shlex.quote(args.model)}" if args.model else ""
-    values = {
+    raw_values = {
         "to": args.to,
         "role": args.role,
         "model": args.model,
-        "model_arg": model_arg,
         "effort": args.effort,
         "request_file": str(request_file),
         "run_dir": str(run_dir),
     }
-    return shlex.split(template.format(**values))
+    values = {key: shlex.quote(str(value)) for key, value in raw_values.items()}
+    values["model_arg"] = model_arg
+    return values
 
 
-def delegate(args: argparse.Namespace) -> int:
-    """委譲 run を作成し、必要なら外部 CLI を実行する。
+def validate_template_fields(template: str) -> None:
+    """未知の template 変数や format 修飾を分かりやすいエラーにする。"""
+    allowed = ", ".join(f"{{{name}}}" for name in SUPPORTED_TEMPLATE_VARS)
+    try:
+        parsed = list(string.Formatter().parse(template))
+    except ValueError as exc:
+        raise CommandTemplateError(f"invalid command template: {exc}") from exc
 
-    request/status/stdout/stderr/result を同じ run_dir に保存し、dry-run、失敗、timeout も
-    後から監視 CLI や人間が追跡できる形で残す。
-    """
-    project = Path(args.project).resolve()
-    runs_dir = project / ".agentops" / "runs"
-    run_id = args.run_id or f"{jst_run_id_stamp()}-{args.to}-{slug(args.role)}"
-    run_dir = runs_dir / run_id
-    artifacts_dir = run_dir / "artifacts"
-    # ドライランや起動失敗も調査できるよう、実行前に run ディレクトリ全体を作る。
-    artifacts_dir.mkdir(parents=True, exist_ok=True)
+    for _, field_name, format_spec, conversion in parsed:
+        if field_name is None:
+            continue
+        if field_name not in SUPPORTED_TEMPLATE_VARS:
+            raise CommandTemplateError(
+                f"unknown command template variable {{{field_name}}}; supported variables: {allowed}"
+            )
+        if format_spec or conversion:
+            raise CommandTemplateError(
+                f"command template variable {{{field_name}}} does not support format modifiers; "
+                f"supported variables: {allowed}"
+            )
 
-    body = read_input(args, project)
-    request_text = build_request(args, body)
-    request_file = run_dir / "request.md"
-    stdout_file = run_dir / "stdout.log"
-    stderr_file = run_dir / "stderr.log"
-    result_file = run_dir / "result.md"
-    status_file = run_dir / "status.json"
 
-    request_file.write_text(request_text, encoding="utf-8")
-    stdout_file.write_text("", encoding="utf-8")
-    stderr_file.write_text("", encoding="utf-8")
+def expand_command(template: str, args: argparse.Namespace, request_file: Path, run_dir: Path) -> list[str]:
+    """テンプレート変数を埋め込み、subprocess に渡せる argv 配列へ変換する。"""
+    validate_template_fields(template)
+    try:
+        formatted = template.format(**template_values(args, request_file, run_dir))
+    except KeyError as exc:
+        allowed = ", ".join(f"{{{name}}}" for name in SUPPORTED_TEMPLATE_VARS)
+        raise CommandTemplateError(
+            f"unknown command template variable {{{exc.args[0]}}}; supported variables: {allowed}"
+        ) from exc
+    command = shlex.split(formatted)
+    if not command:
+        raise CommandTemplateError("command template expanded to an empty command")
+    return command
 
-    template = command_template(args)
-    command = expand_command(template, args, request_file, run_dir)
-    started_at = jst_timestamp()
 
-    status: dict[str, Any] = {
+def subprocess_output_text(value: str | bytes | None) -> str:
+    """TimeoutExpired の stdout/stderr を write_text できる文字列へ揃える。"""
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return value
+
+
+def mark_failed_run(
+    *,
+    status_file: Path,
+    status: dict[str, Any],
+    stderr_file: Path,
+    result_file: Path,
+    message: str,
+    exit_code: int,
+) -> int:
+    """実行中 run を failed に確定させ、可能な限り記録を残す。"""
+    try:
+        stderr_file.write_text(message + "\n", encoding="utf-8")
+        result_file.write_text(f"# Delegate Failed\n\n{message}\n", encoding="utf-8")
+    except OSError:
+        # status の確定を優先する。ログ書き込み失敗は status.error に残す。
+        pass
+    status["state"] = "failed"
+    status["exit_code"] = exit_code
+    status["completed_at"] = jst_timestamp()
+    status["error"] = message
+    write_json(status_file, status)
+    return exit_code
+
+
+def os_error_exit_code(exc: OSError) -> int:
+    """POSIX に寄せた外部コマンド起動失敗の exit code を返す。"""
+    if isinstance(exc, FileNotFoundError):
+        return 127
+    if isinstance(exc, PermissionError):
+        return 126
+    return 1
+
+
+def base_status(
+    *,
+    args: argparse.Namespace,
+    run_id: str,
+    project: Path,
+    request_file: Path,
+    command: list[str],
+    state: str,
+    started_at: str,
+) -> dict[str, Any]:
+    """status.json の共通フィールドを組み立てる。"""
+    return {
         "run_id": run_id,
-        "state": "dry_run" if args.dry_run else "running",
+        "state": state,
         "to": args.to,
         "role": args.role,
         "model": args.model,
@@ -160,6 +305,73 @@ def delegate(args: argparse.Namespace) -> int:
         "command": command,
         "started_at": started_at,
     }
+
+
+def delegate(args: argparse.Namespace) -> int:
+    """委譲 run を作成し、必要なら外部 CLI を実行する。
+
+    request/status/stdout/stderr/result を同じ run_dir に保存し、dry-run、失敗、timeout も
+    後から監視 CLI や人間が追跡できる形で残す。
+    """
+    validate_effort(args.effort)
+    project = Path(args.project).resolve()
+    runs_dir = project / ".agentops" / "runs"
+    explicit_run_id = args.run_id is not None
+    preferred_run_id = (
+        sanitize_run_id(args.run_id) if explicit_run_id else f"{jst_run_id_stamp()}-{args.to}-{slug(args.role)}"
+    )
+    run_id, run_dir = allocate_run_dir(runs_dir, preferred_run_id, explicit=explicit_run_id)
+
+    body = read_input(args, project)
+
+    request_text = build_request(args, body)
+    request_file = run_dir / "request.md"
+    stdout_file = run_dir / "stdout.log"
+    stderr_file = run_dir / "stderr.log"
+    result_file = run_dir / "result.md"
+    status_file = run_dir / "status.json"
+    artifacts_dir = run_dir / "artifacts"
+    # ドライランや起動失敗も調査できるよう、実行前に run ディレクトリ全体を作る。
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+
+    request_file.write_text(request_text, encoding="utf-8")
+    stdout_file.write_text("", encoding="utf-8")
+    stderr_file.write_text("", encoding="utf-8")
+
+    template = command_template(args)
+    started_at = jst_timestamp()
+    status = base_status(
+        args=args,
+        run_id=run_id,
+        project=project,
+        request_file=request_file,
+        command=[],
+        state="failed",
+        started_at=started_at,
+    )
+    try:
+        command = expand_command(template, args, request_file, run_dir)
+    except CommandTemplateError as exc:
+        exit_code = mark_failed_run(
+            status_file=status_file,
+            status=status,
+            stderr_file=stderr_file,
+            result_file=result_file,
+            message=str(exc),
+            exit_code=2,
+        )
+        print(f"delegate command template error: {exc}", file=sys.stderr)
+        return exit_code
+
+    status = base_status(
+        args=args,
+        run_id=run_id,
+        project=project,
+        request_file=request_file,
+        command=command,
+        state="dry_run" if args.dry_run else "running",
+        started_at=started_at,
+    )
     # 外部 CLI 起動前に status を書くことで、途中停止した run も stuck として検知できる。
     write_json(status_file, status)
 
@@ -206,8 +418,8 @@ def delegate(args: argparse.Namespace) -> int:
         print(f"delegate run finished with exit code {completed.returncode}: {run_dir}")
         return completed.returncode
     except subprocess.TimeoutExpired as exc:
-        stdout_file.write_text(exc.stdout or "", encoding="utf-8")
-        stderr_file.write_text(exc.stderr or "", encoding="utf-8")
+        stdout_file.write_text(subprocess_output_text(exc.stdout), encoding="utf-8")
+        stderr_file.write_text(subprocess_output_text(exc.stderr), encoding="utf-8")
         result_file.write_text(f"# Delegate Timeout\n\nTimed out after {args.timeout} seconds.\n", encoding="utf-8")
         status["state"] = "timeout"
         status["exit_code"] = 124
@@ -215,22 +427,36 @@ def delegate(args: argparse.Namespace) -> int:
         write_json(status_file, status)
         print(f"delegate run timed out: {run_dir}", file=sys.stderr)
         return 124
-    except FileNotFoundError as exc:
+    except OSError as exc:
         # 端末出力だけで終わらせず、失敗した run として記録を残す。
-        stderr_file.write_text(str(exc) + "\n", encoding="utf-8")
-        result_file.write_text(
-            "# Delegate Failed\n\n"
-            "The external agent command was not found. Configure AGENTOPS_CODEX_CMD, "
-            "AGENTOPS_CLAUDE_CMD, or pass --command-template.\n",
-            encoding="utf-8",
+        if isinstance(exc, FileNotFoundError):
+            message = (
+                "The external agent command was not found. Configure AGENTOPS_CODEX_CMD, "
+                f"AGENTOPS_CLAUDE_CMD, or pass --command-template. ({exc})"
+            )
+            print(f"delegate command not found: {exc}", file=sys.stderr)
+        else:
+            message = f"delegate command failed before completion: {exc}"
+            print(message, file=sys.stderr)
+        return mark_failed_run(
+            status_file=status_file,
+            status=status,
+            stderr_file=stderr_file,
+            result_file=result_file,
+            message=message,
+            exit_code=os_error_exit_code(exc),
         )
-        status["state"] = "failed"
-        status["exit_code"] = 127
-        status["completed_at"] = jst_timestamp()
-        status["error"] = str(exc)
-        write_json(status_file, status)
-        print(f"delegate command not found: {exc}", file=sys.stderr)
-        return 127
+    except KeyboardInterrupt:
+        message = "delegate run interrupted"
+        print(message, file=sys.stderr)
+        return mark_failed_run(
+            status_file=status_file,
+            status=status,
+            stderr_file=stderr_file,
+            result_file=result_file,
+            message=message,
+            exit_code=130,
+        )
 
 
 def list_runs(args: argparse.Namespace) -> int:
@@ -284,7 +510,7 @@ def build_parser() -> argparse.ArgumentParser:
     delegate_parser.add_argument("--to", choices=("codex", "claude"), required=True)
     delegate_parser.add_argument("--role", required=True)
     delegate_parser.add_argument("--model", default="")
-    delegate_parser.add_argument("--effort", default="high")
+    delegate_parser.add_argument("--effort", choices=ALLOWED_EFFORTS, default="high")
     delegate_parser.add_argument("--input")
     delegate_parser.add_argument("--message")
     delegate_parser.add_argument("--project", default=".")
@@ -311,7 +537,11 @@ def main(argv: list[str] | None = None) -> int:
     """コマンドライン引数を解析し、選ばれたサブコマンドへ処理を渡す。"""
     parser = build_parser()
     args = parser.parse_args(argv)
-    return args.func(args)
+    try:
+        return args.func(args)
+    except AgentOpsError as exc:
+        print(f"agentops: error: {exc}", file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":
