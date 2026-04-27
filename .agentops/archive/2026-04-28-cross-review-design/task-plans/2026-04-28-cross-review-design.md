@@ -1,13 +1,14 @@
 # Task Plan: cross-review design policy implementation
 
 plan_id: 2026-04-28-cross-review-design
-status: in_progress
+status: completed
 created_at: 2026-04-28
+completed_at: 2026-04-28
 timezone: Asia/Tokyo
 
 ## 今回の目的
 
-承認済み plan に沿って、cross-review / cross-model review の設計思想を agentops の現行 docs、catalog、config template へ反映する。
+承認済み plan に沿って、cross-review / cross-model review の設計思想を agentops の現行 docs、catalog、config template へ反映した。
 
 ## 実行順
 
@@ -16,21 +17,21 @@ timezone: Asia/Tokyo
 3. docs の cross-review / model routing / review policy を更新する。
 4. skills / workflows catalog の cross-review 発火条件を更新する。
 5. config / template 側の CLI 別雛形に、実設定ではなく生成方針として反映する。
-6. `rg`、`git diff --check`、`scripts/agentops-watch check --projects config/projects.yml`、必要なら `python3 -m compileall tools` を実行する。
+6. `rg`、`git diff --check`、`scripts/agentops-watch check --projects config/projects.yml` を実行する。
 7. diff 自己レビューを行う。
-8. 修正が必要なら最大2周まで対応し、最後に最終レビューを行う。
-
-## 現在状態
-
-- 実装、検証、自己レビューは完了。
-- ユーザー指摘を受け、承認済み計画では重要確認が必要な場合を除き、commit / push / PR / merge / main 同期まで進める運用へ修正した。
-- task はマージ完了まで `.agentops/tasks/` 直下に残す。
+8. commit / push / PR / merge / main 同期まで行う。
+9. 完了済み plan / task-plan / task / review を archive へ移す。
 
 ## 今回は行わないこと
 
 - 実 model id の固定。
 - `/home/otaku/.codex`、`/home/otaku/.claude`、shell profile、MCP 実設定の変更。
 - cross-review を全変更で必須化すること。
+
+## 完了状態
+
+- PR #18 で設計思想反映を merge 済み。
+- cleanup PR で `.agentops` の完了済み入口を archive へ移動する。
 
 ## 停止条件
 

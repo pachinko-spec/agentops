@@ -1,15 +1,16 @@
 # Plan: cross-review design policy
 
 plan_id: 2026-04-28-cross-review-design
-status: approved
+status: completed
 created_at: 2026-04-28
+completed_at: 2026-04-28
 timezone: Asia/Tokyo
 
 ## 背景
 
-Codex 側のグローバル設定後、初めてこのリポジトリの運用ルールを適用する作業として、cross-review / cross-model review の設計思想を現行 docs、catalog、config template へ反映する。
+Codex 側のグローバル設定後、初めてこのリポジトリの運用ルールを適用する作業として、cross-review / cross-model review の設計思想を現行 docs、catalog、config template へ反映した。
 
-agentops は実設定ではなく、Claude Code / Codex のグローバル設定を設計・見直すための参照キットである。そのため、実 model id や dotfiles へ直接反映せず、設計思想、候補カタログ、テンプレート方針として整理する。
+agentops は実設定ではなく、Claude Code / Codex のグローバル設定を設計・見直すための参照キットである。そのため、実 model id や dotfiles へ直接反映せず、設計思想、候補カタログ、テンプレート方針として整理した。
 
 ## 目的
 
@@ -63,8 +64,9 @@ agentops は実設定ではなく、Claude Code / Codex のグローバル設定
 - `.agentops/plans/current.md`、`.agentops/task-plans/current.md`、必要な `.agentops/tasks/*.md` が作成または更新されている。
 - `git diff --check` が成功する。
 - `scripts/agentops-watch check --projects config/projects.yml` が成功する。
-- 必要に応じて `python3 -m compileall tools` を実行する。
 - diff 自己レビューと最終レビューを行い、未解決の P0/P1 がないことを確認する。
+- PR を GitHub 上で merge し、main と origin/main を同期する。
+- 完了済み plan / task-plan / task / review を `.agentops/archive/2026-04-28-cross-review-design/` へ移す。
 
 ### 禁止事項
 
@@ -87,5 +89,4 @@ agentops は実設定ではなく、Claude Code / Codex のグローバル設定
 - `rg` で cross-review / cross-model / review frontier まわりの参照整合性を確認する。
 - `git diff --check`
 - `scripts/agentops-watch check --projects config/projects.yml`
-- 必要に応じて `python3 -m compileall tools`
 - 差分自己レビューと最終レビューを行う。
