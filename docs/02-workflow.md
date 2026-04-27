@@ -1,25 +1,42 @@
 # ワークフロー
 
+## 実装前の計画と承認
+
+実装、削除、ファイル生成、インストール、外部反映の前に、必ず計画をユーザーへ提示し、承認を得る。
+
+承認を省略できるのは、承認済みの同一plan内でセッション跨ぎの別フェーズまたは別taskを継続する場合のみである。ただし、その場合でも今回セッションで行う小分け計画とtaskは必ず明示する。
+
+`.agentops` では次の責務に分ける。
+
+- `.agentops/plans/current.md`: 大きい承認済みplan。原則最大1つ。
+- `.agentops/task-plans/current.md`: 今回セッションまたは復帰用の実行計画。
+- `.agentops/tasks/*.md`: 未完了、進行中、blockedの子task。
+- `.agentops/archive/<plan-id>/`: 完了、中止、置き換え済みのplan/task/task-plan。
+
+
 ## 標準サイクル
 
 1. ブランチ確認
 2. 調査
-3. 設計
-4. 設計レビュー
-5. 実装
-6. テスト
-7. ドキュメント更新
-8. 自己レビュー
-9. commit
-10. push
-11. PR作成
-12. レビュー
-13. 修正
-14. 最終レビュー
-15. GitHub上でPRをマージ
-16. mainへ戻る
-17. remote main取得と同期確認
-18. マージ後報告
+3. 計画提示とユーザー承認
+4. task-planとtasks作成
+5. 設計
+6. 設計レビュー
+7. 実装
+8. テスト
+9. ドキュメント更新
+10. 自己レビュー
+11. commit
+12. push
+13. PR作成
+14. レビュー
+15. 修正
+16. 最終レビュー
+17. GitHub上でPRをマージ
+18. mainへ戻る
+19. remote main取得と同期確認
+20. 完了済みtaskとplanをarchiveへ移動
+21. マージ後報告
 
 長時間の委譲、再現が必要なバグ修正、UI/外部CLI/MCPを使う検証、モデルやpromptの退行確認では、調査後に harness spec を作る。小さな修正では既存の DbC とテスト条件で足りる。詳細は [Harness Engineering](12-harness-engineering.md) を参照する。
 

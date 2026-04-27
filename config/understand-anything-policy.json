@@ -1,0 +1,58 @@
+{
+  "baseBranch": "main",
+  "smallChangeMaxFiles": 8,
+  "incrementalMaxFiles": 50,
+  "fullRebuildFileThreshold": 50,
+  "docOnlyAction": "skip",
+  "prDefaultAction": "diff",
+  "postMergeDefaultAction": "incremental",
+  "fullRebuildOnRelease": true,
+  "lightweightPatterns": [
+    "**/*.md",
+    "**/*.mdx",
+    "docs/**",
+    "README*",
+    "CHANGELOG*"
+  ],
+  "structuralPatterns": [
+    "src/**",
+    "app/**",
+    "lib/**",
+    "packages/**",
+    "services/**",
+    "api/**",
+    "db/**",
+    "database/**",
+    "migrations/**",
+    "infra/**",
+    "terraform/**",
+    "k8s/**",
+    "docker/**",
+    ".github/workflows/**"
+  ],
+  "domainPatterns": [
+    "docs/**",
+    "rules/**",
+    "skills/**",
+    "workflows/**",
+    "domain/**",
+    "src/**/auth/**",
+    "src/**/billing/**",
+    "src/**/payment/**",
+    "src/**/pricing/**",
+    "src/**/entitlement/**",
+    "packages/**/auth/**",
+    "packages/**/billing/**",
+    "packages/**/payment/**"
+  ],
+  "toolVersionPatterns": [
+    "package.json",
+    "pnpm-lock.yaml",
+    "package-lock.json",
+    "yarn.lock",
+    "bun.lockb",
+    "config/understand-anything-policy.json",
+    "scripts/ua-bootstrap.mjs",
+    "scripts/ua-graph-controller.mjs"
+  ]
+}

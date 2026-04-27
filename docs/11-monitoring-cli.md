@@ -31,14 +31,14 @@ scripts/agentops-watch notify --projects config/projects.yml
 - 現在ブランチ
 - `origin/{default_branch}` との ahead / behind
 - `.agentops/runs/` の stuck run
-- `.agentops/tasks/` の未完了タスク数
+- `.agentops/tasks/*.md` の未完了タスク数。完了済みtaskは `.agentops/archive/<plan-id>/tasks/` に移す
 - `.agentops/handoffs/` の引き継ぎ数
 - `freshness-sources.yml` の `last_checked` と `max_age_days`
 - Discord webhook への digest 送信
 
 GitHub API、CI 詳細、reviewDecision、mergeable、package registry の取得は今後の拡張点とする。
 
-Harness spec の実行は監視 CLI の責務ではない。監視 CLI は `.agentops/runs/`、`.agentops/tasks/`、`.agentops/handoffs/`、freshness 設定を読み、harness の実行結果や artifact が run log として残っているかを将来確認対象にできる。
+Harness spec の実行は監視 CLI の責務ではない。 `.agentops/tasks/` 直下のMarkdownは未完了、進行中、blockedのtaskだけに限定する。監視 CLI は `.agentops/runs/`、`.agentops/tasks/`、`.agentops/handoffs/`、freshness 設定を読み、harness の実行結果や artifact が run log として残っているかを将来確認対象にできる。
 
 ## 設定
 

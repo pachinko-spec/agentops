@@ -1,10 +1,19 @@
 # skills
 
-グローバル化候補のスキル設計を置く場所です。
+グローバル化候補のskill設計を置く場所です。
 
-初期候補:
+`skills/` は、常時読むルールではなく、特定の観点や用途で必要になった時だけ読む再利用可能な能力です。常時適用する判断基準は `rules/`、作業手順は `workflows/` に置きます。
 
-- `freshness-audit`: 設計思想、モデル、LTS、公式docsの陳腐化確認
-- `docs-maintainer`: 実装差分に応じたドキュメント更新
-- `review-loop-guard`: レビュー修正ループの停止条件確認
-- `cross-model-delegate`: Claude Code / Codex 間の委譲手順
+## 構成
+
+- `review/`: コード、設計、PR差分をレビューする観点。
+- `design/`: 設計時に見る観点。
+- `docs/`: ドキュメント作成・更新の観点。
+- `ops/`: 運用、委譲、handoff、freshness、Understand-Anythingの観点。
+
+## 運用
+
+- 各skillは `SKILL.md` を持つ。
+- frontmatterの `name` は英語の識別子でよい。
+- `description` と本文は日本語を基本にする。
+- 複数skillで共通する常時ルールは `rules/` に寄せる。
