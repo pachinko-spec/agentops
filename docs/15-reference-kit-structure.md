@@ -2,7 +2,7 @@
 
 ## 位置づけ
 
-この文書は、`rules/`、`skills/`、`workflows/` を今後どの置き場へ整理するかの分類案です。今回のタスクでは、対象ファイルの移動や削除は行わず、参照関係、影響範囲、強い語彙の残存箇所を記録します。
+この文書は、`rules/`、`skills/`、`workflows/` を今後どの置き場へ整理するかの分類案と、005 で決めた移行方針です。005 では対象ファイルの大きな移動や削除は行わず、移行候補、archive 方針、参照切れ確認方法を記録します。
 
 分類は次の意味で使います。
 
@@ -22,9 +22,30 @@
 - `workflows/code-review.md` は `skills/review/*`、`workflows/design-review.md` は `skills/design/*`、`workflows/feature-delivery.md` は `skills/review/*` を参照している。
 - `config/understand-anything-policy.json` は `rules/**`、`skills/**`、`workflows/**` を対象 glob として含む。
 
+## 005 での移行方針
+
+005 では、過剰な見本群をすぐに削除せず、次の方針で扱う。
+
+- `rules/`: 現時点では全体を現役参照資料として残す。表現が強い箇所は、構造移動より先に語彙を弱める候補として扱う。
+- `workflows/`: 実プロジェクト作業の入口や中核手順は現役参照資料として残す。確認項目型は `checklists/` 候補、CLI へ取り込む手順型は `templates/workflows/` 候補、Understand-Anything 固有手順は `examples/` または archive 候補として扱う。
+- `skills/`: `SKILL.md` 形式のまま使う場合は `templates/skills/` 候補、観点だけを残す場合は `checklists/` 候補として扱う。Understand-Anything 固有 skill は `examples/` または archive 候補とする。
+- `examples/`: 特定ツール、特定スクリプト、過去の実装に依存するが、見本として価値があるものを置く候補にする。
+- `templates/`: Claude Code / Codex などへ採否を判断して取り込む、CLI 用または実プロジェクト用の雛形を置く候補にする。
+- `checklists/`: workflow や skill として常時入口に置くより、確認項目として読む方が自然なものを置く候補にする。
+- `.agentops/archive/`: 完了した plan、task-plan、task、review、run の運用履歴だけを置く。参照キット本体の見本ファイルは、`.agentops/archive/` へ混ぜない。
+- repository-level archive: 参照キット本体のファイルを archive する必要が出た場合だけ、ユーザー承認後に置き場を決める。既存の `.agentops/archive/` とは役割を分ける。
+
+大きな移動や削除に入る前には、次をユーザーへ提示して承認を得る。
+
+- 移動、削除、archive 対象の正確なファイル一覧。
+- 移動先を `examples/`、`templates/`、`checklists/`、archive のどれにするか。
+- README、docs、config、workflows、skills、scripts、`.agentops` からの参照更新対象。
+- `config/understand-anything-policy.json` の glob 変更要否。
+- 検証コマンドと、参照切れが見つかった場合の戻し方。
+
 ## rules 分類案
 
-`rules/` は常時適用に近い短い判断基準が中心のため、現時点では全体を現役参照資料として残す。ただし、README、DRY、責務分離まわりの語彙は、003 後の構造整理または 004/005 で弱める候補とする。
+`rules/` は常時適用に近い短い判断基準が中心のため、現時点では全体を現役参照資料として残す。ただし、README、DRY、責務分離まわりの語彙は、後続作業で弱める候補とする。
 
 | ファイル | 主分類 | 補助候補 | 理由と影響 |
 | --- | --- | --- | --- |
@@ -43,7 +64,7 @@
 
 ## workflows 分類案
 
-`workflows/` は「作業手順」と「確認チェックリスト」と「特定ツール手順」が混在している。次フェーズでは、入口と実プロジェクト向けの少数を現役参照として残し、確認項目型は `checklists/`、CLI へ取り込む手順型は `templates/workflows/`、Understand-Anything 固有手順は `examples/` または archive 候補へ分けるのが自然。
+`workflows/` は「作業手順」と「確認チェックリスト」と「特定ツール手順」が混在している。後続作業では、入口と実プロジェクト向けの少数を現役参照として残し、確認項目型は `checklists/`、CLI へ取り込む手順型は `templates/workflows/`、Understand-Anything 固有手順は `examples/` または archive 候補へ分けるのが自然。
 
 | ファイル | 主分類 | 補助候補 | 理由と影響 |
 | --- | --- | --- | --- |
@@ -154,7 +175,7 @@
 
 ## 強い語彙の扱い候補
 
-次の箇所は「正本」「投影物」などの強い語彙が残る。今回のタスクでは記録に留め、構造整理や CLI テンプレート整理と合わせて、次フェーズで置換する。
+次の箇所は「正本」「投影物」などの強い語彙が残る。005 では記録に留め、構造整理や CLI テンプレート整理と合わせて、後続作業で置換する。
 
 | ファイル | 残る語彙 | 扱い候補 |
 | --- | --- | --- |
@@ -184,14 +205,14 @@
 移動を実施する前には、少なくとも次を確認する。
 
 ```sh
-rg -n "rules/|skills/|workflows/" README.md docs config workflows skills .agentops
-rg -n "正本|投影物" README.md docs rules workflows skills config .agentops
+rg -n "rules/|skills/|workflows/" README.md docs config workflows skills scripts .agentops
+rg -n "正本|投影物" README.md docs rules workflows skills config scripts .agentops
 git diff --check
 scripts/agentops-watch check --projects config/projects.yml
 ```
 
-## 次フェーズへの提案
+## 後続作業への提案
 
-- 004 では、Claude Code / Codex 用テンプレートの観点で `templates/skills/`、`templates/workflows/`、`checklists/` の最小構成を決める。
-- 005 では、この分類案を元に実際の移動、README/docs/config 参照更新、archive 方針をユーザー承認後に実施する。
+- Claude Code / Codex 用テンプレートの観点で `templates/skills/`、`templates/workflows/`、`checklists/` の最小構成を決める。
+- 実際の移動を行う場合は、この分類案と 005 の移行方針を元に、README/docs/config/workflows/skills/scripts の参照更新案をユーザー承認後に実施する。
 - Understand-Anything 関連は、補助ツール docs、`examples/`、archive のどこへ置くかを個別判断する。
