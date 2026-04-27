@@ -2,6 +2,9 @@
 
 ## グローバル設定に置くもの
 
+- `~/dev` 配下の実プロジェクトを既定対象にし、dotfiles は明示依頼がない限り除外するという作業境界
+- Nuxt、Next.js、PHP、Go などのWebシステムを主対象にするというテンプレート方針
+- Cloudflare Workers / Pages、Xserver レンタルサーバー、GCP、ローカルサーバーを候補にしたデプロイ先選定の判断軸
 - 実装前の計画提示、ユーザー承認、承認省略時の小分けtask-plan明示
 - `rules/`、`skills/`、`workflows/` の正本分離とDRY原則
 - 日本語運用ルール
@@ -24,6 +27,7 @@
 - プロジェクト固有のビルド・テストコマンド
 - 使用スタックとバージョン
 - デプロイ手順
+- 実際のデプロイ先、環境名、rollback手順、監視先、backup手順
 - プロジェクト固有の禁止事項
 - プロジェクト固有の harness spec、fixture、oracle、sandbox/network allowlist
 - `.agentops/tasks/`、`.agentops/plans/`、`.agentops/runs/`
@@ -54,3 +58,9 @@
 詳細は [実設定雛形](08-config-templates.md) を参照する。
 
 Harness の共通方針は [Harness Engineering](12-harness-engineering.md)、コピー元の雛形は `config/harness.yml` を参照する。
+
+## テンプレートの判定基準
+
+`rules/`、`skills/`、`workflows/` に置くものは、agentops 保守だけでなく、実プロジェクトの設計、実装、レビュー、運用、収益化、docs更新、リリースに転用できることを基本条件にする。
+
+agentops 保守専用の手順が必要な場合は、そのことを明記し、実プロジェクト向けテンプレートと混同しない。

@@ -18,6 +18,8 @@
 - Context7 MCP の install / API key / transport 仕様
 - Google Stitch MCP / SDK / API key / transport 仕様
 - Node.js、Python、Rust、Goなど主要ランタイムのLTS
+- Nuxt、Next.js、PHP、Goなど主要Webスタック
+- Cloudflare Workers / Pages、Xserver、GCP、ローカルサーバー運用に関わる公式docs
 - 主要フレームワークとテストツール
 - このリポジトリ内の設計docs、プロンプト、workflow、skill
 

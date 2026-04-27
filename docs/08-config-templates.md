@@ -22,7 +22,11 @@
 
 グローバル設定には、日本語運用、GitHub を正とするバージョン管理、ブランチ保護、DbC、曖昧指示の扱い、レビュー修正ループ、最新性確認、ドキュメント更新必須ルール、汎用 MCP 導入確認方針を置く。
 
+また、実プロジェクト作業の既定対象は `~/dev` 配下、dotfiles は明示依頼がない限り対象外、主なWebスタックは Nuxt / Next.js / PHP / Go、主なリリース先は Cloudflare Workers / Pages、Xserver、GCP、ローカルサーバーというテンプレート前提を置く。
+
 プロジェクト固有のビルド、テスト、デプロイ、禁止事項、MCP の詳細設定、hook の詳細は各プロジェクト側に置く。Context7 と Google Stitch のような汎用 MCP はグローバルで導入確認方針を持ち、プロジェクト側では利用可否、追加 allowlist、secret 管理方法を具体化する。
+
+Cloudflare、Xserver、GCP、ローカルサーバーの実デプロイコマンド、アカウント、環境名、secret、rollback手順、監視先は各プロジェクト側に置く。
 
 harness の実体もプロジェクト固有に置く。`config/harness.yml` は、task spec、setup、allowed commands、fixtures、oracle、artifact、replay、sandbox/network/secret 条件を揃えるためのコピー元に留める。
 

@@ -7,6 +7,8 @@ AIエージェントが常時適用する判断基準を置く場所です。
 ## 一覧
 
 - `planning-approval.md`: 実装前の計画提示、承認、小分けtask-plan。
+- `project-template-scope.md`: 実プロジェクトへ持ち出すテンプレートの対象範囲。
+- `deployment-target-policy.md`: Cloudflare / Xserver / GCP / ローカルサーバーの選定方針。
 - `dry-principle.md`: DRY原則と正本の分離。
 - `source-of-truth.md`: `rules/`、`skills/`、`workflows/`、`docs/`、`config/` の責務。
 - `language-policy.md`: 日本語運用と英語を残す条件。
