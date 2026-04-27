@@ -1,5 +1,10 @@
 # Local scratch space for lint/test logs, temp scripts, and disposable artifacts.
 /.tmp/
+.agentops/.tmp/
+
+# Delegate run logs may include session ids, local paths, stderr, and model output.
+.agentops/runs/*
+!.agentops/runs/README.md
 
 # Python validation/test caches.
 __pycache__/

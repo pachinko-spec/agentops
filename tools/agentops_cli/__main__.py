@@ -17,8 +17,8 @@ JST = ZoneInfo("Asia/Tokyo")
 
 
 DEFAULT_TEMPLATES = {
-    "codex": "codex exec {model_arg} --reasoning-effort {effort} -",
-    "claude": "claude {model_arg} --print",
+    "codex": "codex exec {model_arg} -c model_reasoning_effort={effort} -",
+    "claude": "claude {model_arg} --effort {effort} --print",
 }
 
 

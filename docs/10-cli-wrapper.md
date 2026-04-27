@@ -55,11 +55,13 @@ scripts/agentops doctor
 
 ## 外部 CLI への接続
 
-既定コマンドは最小の雛形であり、実運用では公式 docs で現在の CLI 仕様を確認してから環境変数で上書きする。
+既定コマンドは最小の雛形であり、実運用では公式 docs と CLI 現物で現在の仕様を確認してから環境変数で上書きする。
+
+Codex CLI 0.125.0 では `codex exec --reasoning-effort ...` は受け付けず、`-c model_reasoning_effort=...` で推論レベルを渡す。Claude Code 2.1.119 では `--effort` と `--print` を併用する。
 
 ```sh
-export AGENTOPS_CODEX_CMD='codex exec --model {model} --reasoning-effort {effort} -'
-export AGENTOPS_CLAUDE_CMD='claude --model {model} --print'
+export AGENTOPS_CODEX_CMD='codex exec {model_arg} -c model_reasoning_effort={effort} -'
+export AGENTOPS_CLAUDE_CMD='claude {model_arg} --effort {effort} --print'
 ```
 
 使用可能なテンプレート変数:
@@ -83,6 +85,21 @@ export AGENTOPS_CLAUDE_CMD='claude --model {model} --print'
 | `succeeded` | exit code 0 で完了 |
 | `failed` | exit code 非 0 またはコマンド不明 |
 | `timeout` | timeout で停止 |
+
+## smoke test の実行環境
+
+dry-run は sandbox 内で実行してよい。外部 CLI を実際に呼ぶ smoke test は、ユーザー承認後に通常環境で実行する。
+
+Codex / Claude Code CLI は、認証、セッション初期化、ネットワーク、ローカル設定の読み込みを行う。Codex App や他の sandbox 内では、read-only filesystem、ネットワーク制限、session persistence 制限により、CLI wrapper ではなく実行環境側の理由で失敗または timeout することがある。
+
+実 smoke test では、session log を増やしにくいオプションを優先する。
+
+```sh
+scripts/agentops delegate --to codex --role smoke --effort xhigh --message "Return exactly: OK" --timeout 120 --command-template 'codex exec {model_arg} -c model_reasoning_effort={effort} --ephemeral -'
+scripts/agentops delegate --to claude --role smoke --effort xhigh --message "Return exactly: OK" --timeout 120 --command-template 'claude {model_arg} --effort {effort} --print --no-session-persistence'
+```
+
+通常環境で成功し、stdout が期待値どおりであることを `.agentops/runs/{run_id}/` に残す。sandbox 内の失敗 run がある場合は、通常環境での再実行結果と区別して報告する。
 
 ## DbC
 
