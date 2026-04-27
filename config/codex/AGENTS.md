@@ -10,8 +10,9 @@
 - コード、API名、CLI名、パッケージ名、UIラベルなど英語が自然なものは英語のままでよい。
 - 作業前に必ず `git status --short --branch` で現在ブランチと未コミット差分を確認する。
 - `main` / `master` / `develop` など保護対象ブランチでは直接作業しない。必要なら `codex/` プレフィックスの作業ブランチを作る。
-- main への直 push は禁止する。作業ブランチ、commit、push、PR、レビュー、マージの順で扱う。
-- ローカルでマージした場合は、必ずリモートへ push し、`git status --short --branch` で `main...origin/main` が同期していることを確認する。
+- main への直 push は禁止する。作業ブランチ、commit、push、GitHub上のPR作成、レビュー、GitHub上のマージの順で扱う。
+- ローカルで main へマージして完了扱いしない。履歴、レビュー、マージ判断はリモートPRに残す。
+- マージ完了後は、必ず `main` に戻り、remote の `main` を取得して `git status --short --branch` で `main...origin/main` が同期していることを確認する。
 - 実装後は必ず検証する。テスト未実行または失敗状態では commit / push しない。
 - 実装差分が README、docs、設定、prompt、skill、workflow に影響する場合はドキュメント更新を完了条件に含める。
 - DbC の考え方を使い、前提条件、不変条件、完了条件、禁止事項、停止条件を明確にする。
@@ -26,8 +27,9 @@
 5. 実装する。
 6. lint、型チェック、テスト、必要なら E2E / ブラウザ確認を行う。
 7. ドキュメントを更新する。
-8. 差分を確認して commit / push / PR へ進む。
-9. マージ後は main に戻り、リモート反映と同期確認まで行う。
+8. 差分を確認して commit / push / GitHub PR 作成へ進む。
+9. レビュー後、GitHub上でマージする。ローカル main への merge だけで完了扱いしない。
+10. マージ後は main に戻り、remote の main を取得して同期確認まで行う。
 
 ## レビュー修正ループ
 

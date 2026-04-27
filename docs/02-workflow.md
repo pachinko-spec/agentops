@@ -14,9 +14,9 @@
 10. PR作成
 11. レビュー
 12. 修正
-13. マージ
+13. GitHub上でPRをマージ
 14. mainへ戻る
-15. リモート反映と同期確認
+15. remote main取得と同期確認
 16. マージ後報告
 
 長時間の委譲、再現が必要なバグ修正、UI/外部CLI/MCPを使う検証、モデルやpromptの退行確認では、調査後に harness spec を作る。小さな修正では既存の DbC とテスト条件で足りる。詳細は [Harness Engineering](12-harness-engineering.md) を参照する。
@@ -29,9 +29,11 @@
 - Codexの作業ブランチは原則 `codex/` プレフィックスを使う。
 - Claude Codeの作業ブランチは原則 `claude/` プレフィックスを使う。
 - 既存プロジェクトにブランチ命名規則がある場合はプロジェクト側を優先する。
-- マージ完了後は、必ず `main` ブランチに戻る。
-- ローカルでマージした場合は、必ず `git push origin main` などでリモートへ反映する。
-- マージ完了は、リモート反映後に `git status --short --branch` で `main...origin/main` が同期していることを確認した時点とする。
+- commit 後は作業ブランチをリモートへ push し、GitHub 上で PR を作成する。
+- レビューとマージ判断は PR 上に残す。ローカルで main へマージして完了扱いしない。
+- マージは GitHub 上の PR で行う。例外的にローカルマージが必要な場合は、事前にユーザーへ確認し、理由を PR または handoff に残す。
+- マージ完了後は、必ず `main` ブランチに戻り、remote の `main` を取得する。
+- マージ完了は、`git status --short --branch` で `main...origin/main` が同期し、PR が merged 状態になっていることを確認した時点とする。
 
 ## マージ後報告
 
