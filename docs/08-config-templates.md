@@ -1,6 +1,6 @@
 # 実設定雛形
 
-このリポジトリの正本は `rules/`、`skills/`、`workflows/`、`docs/` に置く。`config/` はClaude Code、Codex、監視CLI、harnessなどへ反映するための雛形であり、正本ではない。正本を変更した場合は、必要な範囲だけconfigへ投影する。
+`docs/`、`rules/`、`skills/`、`workflows/` は、Claude Code / Codex のグローバル設定を見直すときの参照資料です。`config/` は Claude Code、Codex、監視CLI、harness などへ反映するための雛形であり、実環境と対象 CLI の仕様を確認したうえで、必要な範囲だけ要約・調整して使います。
 
 このリポジトリでは、設計思想だけでなく Claude Code / Codex に投入できる雛形を `config/` に置く。
 

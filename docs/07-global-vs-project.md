@@ -6,7 +6,7 @@
 - Nuxt、Next.js、PHP、Go などのWebシステムを主対象にするというテンプレート方針
 - Cloudflare Workers / Pages、Xserver レンタルサーバー、GCP、ローカルサーバーを候補にしたデプロイ先選定の判断軸
 - 実装前の計画提示、ユーザー承認、承認省略時の小分けtask-plan明示
-- `rules/`、`skills/`、`workflows/` の正本分離とDRY原則
+- `rules/`、`skills/`、`workflows/` を参照候補として整理し、重複を抑える方針
 - 日本語運用ルール
 - グローバル設定は雛形であり、実設定へ反映して初めて効くという前提
 - GitHub を正とするバージョン管理
@@ -50,8 +50,8 @@
 
 1. まずプロジェクトローカルで小さく試す。
 2. 複数プロジェクトで再利用できると判断したらグローバル化する。
-3. 常時適用するものは `rules/`、スキル化できるものは `skills/`、手順化できるものは `workflows/` に設計を書く。
-4. 安定したら Claude Code / Codex の実際のグローバル設定へ反映する。
+3. 常時適用する候補は `rules/`、スキル化できる候補は `skills/`、手順化できる候補は `workflows/` に設計を書く。
+4. 安定したら Claude Code / Codex の実際のグローバル設定へ採否を判断して反映する。
 5. 反映後に、対象クライアントが設定と MCP を読み込んでいることを確認する。
 
 実設定雛形は `config/claude/CLAUDE.md` と `config/codex/AGENTS.md` に置く。
