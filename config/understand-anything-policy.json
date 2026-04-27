@@ -35,6 +35,8 @@
     "rules/**",
     "skills/**",
     "workflows/**",
+    "templates/**",
+    "archive/reference-kit-v1/**",
     "domain/**",
     "src/**/auth/**",
     "src/**/billing/**",

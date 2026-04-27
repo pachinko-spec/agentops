@@ -1,6 +1,6 @@
 # 実設定雛形
 
-`docs/`、`rules/`、`skills/`、`workflows/` は、Claude Code / Codex のグローバル設定を見直すときの参照資料です。`config/` は Claude Code、Codex、監視CLI、harness などで使う反映候補の雛形であり、実環境と対象 CLI の仕様を確認したうえで、必要な範囲だけ採否を判断し、要約・調整して使います。
+`docs/` は設計思想、`rules/`、`skills/`、`workflows/` は候補カタログ、`templates/` は Claude Code / Codex / `.agentops` 向け生成雛形です。`config/` は Claude Code、Codex、監視CLI、harness などで使う反映候補の雛形であり、実環境と対象 CLI の仕様を確認したうえで、必要な範囲だけ採否を判断し、要約・調整して使います。
 
 このリポジトリでは、設計思想だけでなく Claude Code / Codex に投入できる雛形を `config/` に置く。
 
