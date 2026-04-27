@@ -72,7 +72,7 @@
 3. 影響範囲、完了条件、停止条件を短く設計する。必要なら `workflows/catalog.md` と `templates/agentops/` を使って、project-intake、web-system-design、deployment-target-selection 相当の workflow を生成する。
 4. 計画をユーザーへ提示し、承認を得る。承認省略条件を満たす場合でも、今回セッションの小分け計画を明示する。
 5. 必要に応じて `.agentops/plans/current.md`、`.agentops/task-plans/current.md`、`.agentops/tasks/*.md` を更新する。
-6. 高リスクなら別モデルまたはサブエージェントで設計レビューを行う。
+6. 高リスク変更、新機能、リファクタ、依存追加、API 契約変更、デプロイ影響がある場合は、別 CLI / 別モデルファミリーの frontier reviewer による cross-review を検討する。レビュー修正後も必要に応じて再検討する。
 7. 実装する。
 8. lint、型チェック、テスト、必要なら E2E / ブラウザ確認を行う。
 9. ドキュメントを更新する。API、環境変数、deploy、rollback、runbook、release notesへの影響も確認する。
@@ -95,9 +95,11 @@
 
 ## クロスモデル委譲
 
+- Claude Code 主体の cross-review では、主エージェントと別系列の Codex / OpenAI 系 frontier reviewer を候補にする。
 - Codex へ委譲する場合は、原則として共通 CLI Wrapper を使う。
 - 委譲依頼、進捗、stdout/stderr、結果は `.agentops/runs/` に残す。
-- 委譲先の所見は参考情報であり、採否と統合判断はメインエージェントが持つ。
+- 実 model id は固定せず、使用直前に公式 docs と現在の CLI 仕様で確認する。
+- 委譲先の所見は参考情報であり、採否、修正範囲、延期、統合判断はメインエージェントが持つ。
 
 例:
 

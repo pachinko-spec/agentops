@@ -38,6 +38,7 @@ Skill 名、description、tool 権限、supporting files は CLI ごとの公式
 | maintainability-review | 複雑化、重複、責務肥大をレビューする | リファクタ、PR | global |
 | performance-review | 性能劣化、無駄な I/O、bundle、query をレビューする | performance 懸念 | project |
 | dependency-supply-chain-review | 新規依存、license、supply chain をレビューする | dependency 追加 | global |
+| cross-review | 主エージェントとは別 CLI / 別モデルファミリーの frontier reviewer で確認する | 高リスク変更、新機能、リファクタ、依存追加、API 契約変更、デプロイ影響、レビュー修正後 | global |
 | release-readiness-review | release 前の検証、rollback、docs を確認する | release 前 | project |
 | docs-review | README、API docs、runbook、handoff の更新漏れを確認する | docs 影響 | global |
 
@@ -51,7 +52,7 @@ Skill 名、description、tool 権限、supporting files は CLI ごとの公式
 | changelog-release-notes | changelog / release notes を書く | release 準備 | project |
 | session-handoff | 次セッションへ引き継ぐ情報を整理する | 長時間作業、context移行 | global |
 | freshness-audit | 公式 docs、release notes、version を確認する | 最新性が必要 | global |
-| cross-model-delegate | Claude / Codex / subagent へ分担する | 高リスクレビュー、広範囲調査 | global |
+| cross-model-delegate | Claude / Codex / subagent へ分担する | cross-review、広範囲調査、別 CLI での独立確認 | global |
 | review-loop-guard | レビュー修正ループを制御する | レビュー後修正 | global |
 
 ## 生成時の注意
