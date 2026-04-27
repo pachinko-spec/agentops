@@ -1,13 +1,14 @@
 # 001 positioning and decision log
 
 parent_plan: 2026-04-27-agentops-reference-kit-refactor
-status: pending
+status: completed
 
 ## 実行内容
 
 - agentops の位置づけを「Claude Code / Codex グローバル設定時の参照キット」へ再定義する。
 - 設計判断ログの置き場所として `decisions/` を導入する。
 - `decisions/README.md` と `decisions/2026-04-27-agentops-reference-kit-refactor.md` を作る。
+- README と主要 docs に、`decisions/` は毎回読む現役 docs ではなく判断履歴であることを明記する。
 
 ## 完了条件
 
