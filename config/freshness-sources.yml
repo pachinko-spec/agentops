@@ -12,6 +12,26 @@ sources:
     url: https://docs.anthropic.com/
     max_age_days: 30
     last_checked: 2026-04-27
+  - name: Context7 MCP docs
+    kind: mcp
+    url: https://context7.com/docs/installation
+    max_age_days: 30
+    last_checked: 2026-04-27
+  - name: Context7 MCP developer guide
+    kind: mcp
+    url: https://context7.com/docs/resources/developer
+    max_age_days: 30
+    last_checked: 2026-04-27
+  - name: Google Stitch
+    kind: mcp
+    url: https://stitch.withgoogle.com/
+    max_age_days: 30
+    last_checked: 2026-04-27
+  - name: Google Stitch MCP announcement
+    kind: mcp
+    url: https://blog.google/innovation-and-ai/models-and-research/google-labs/stitch-ai-ui-design/
+    max_age_days: 30
+    last_checked: 2026-04-27
   - name: Node.js LTS
     kind: runtime
     url: https://nodejs.org/en/about/previous-releases

@@ -6,6 +6,8 @@
 - 原則として最新LTSまたは安定版を使う。
 - 破壊的変更が大きい場合は採用理由と回避理由を書く。
 - Context7などの知識取得ツールは使ってよいが、更新遅延を前提に一次情報も確認する。
+- MCP対応クライアントで Context7 と Google Stitch が未導入なら導入する。導入時は現在の公式docs、GitHub、release notes、クライアント側MCP docsを確認する。
+- API key は shell profile（例: `.bashrv`）で export 済みの `CONTEXT7_API_KEY` と `STITCH_API_KEY` を使い、secret値をリポジトリ、PR、ログへ出さない。
 - 導入時は公式docs、GitHub、package registry、release notes、security advisoryを確認する。
 
 ## 陳腐化チェック対象
@@ -13,6 +15,8 @@
 - Claude Code / Codex の公式docs
 - OpenAI / Anthropic のモデル一覧、推奨モデル、料金、制限
 - hooks、subagents、skills、plugins、MCPの仕様
+- Context7 MCP の install / API key / transport 仕様
+- Google Stitch MCP / SDK / API key / transport 仕様
 - Node.js、Python、Rust、Goなど主要ランタイムのLTS
 - 主要フレームワークとテストツール
 - このリポジトリ内の設計docs、プロンプト、workflow、skill
