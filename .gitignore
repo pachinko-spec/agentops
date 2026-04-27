@@ -1,0 +1,17 @@
+# Local scratch space for lint/test logs, temp scripts, and disposable artifacts.
+/.tmp/
+
+# Python validation/test caches.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Ignore the empty root-level Codex marker file while still allowing a future
+# project .codex/ directory to be tracked if we intentionally add config there.
+/.codex
+!/.codex/
+!/.codex/**
