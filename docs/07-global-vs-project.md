@@ -2,6 +2,8 @@
 
 ## グローバル設定に置くもの
 
+- 実装前の計画提示、ユーザー承認、承認省略時の小分けtask-plan明示
+- `rules/`、`skills/`、`workflows/` の正本分離とDRY原則
 - 日本語運用ルール
 - グローバル設定は雛形であり、実設定へ反映して初めて効くという前提
 - GitHub を正とするバージョン管理
@@ -25,6 +27,7 @@
 - プロジェクト固有の禁止事項
 - プロジェクト固有の harness spec、fixture、oracle、sandbox/network allowlist
 - `.agentops/tasks/`、`.agentops/plans/`、`.agentops/runs/`
+- `.agentops/task-plans/`、`.agentops/archive/`
 - `.agentops/harness.yml`、`.agentops/harnesses/`、`.agentops/evals/`
 - PRテンプレート、Issueテンプレート
 - プロジェクト固有のhooks、skills、MCP設定
@@ -43,7 +46,7 @@
 
 1. まずプロジェクトローカルで小さく試す。
 2. 複数プロジェクトで再利用できると判断したらグローバル化する。
-3. スキル化できるものは `skills/` に設計を書く。
+3. 常時適用するものは `rules/`、スキル化できるものは `skills/`、手順化できるものは `workflows/` に設計を書く。
 4. 安定したら Claude Code / Codex の実際のグローバル設定へ反映する。
 5. 反映後に、対象クライアントが設定と MCP を読み込んでいることを確認する。
 

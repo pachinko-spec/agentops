@@ -1,5 +1,7 @@
 # 実設定雛形
 
+このリポジトリの正本は `rules/`、`skills/`、`workflows/`、`docs/` に置く。`config/` はClaude Code、Codex、監視CLI、harnessなどへ反映するための雛形であり、正本ではない。正本を変更した場合は、必要な範囲だけconfigへ投影する。
+
 このリポジトリでは、設計思想だけでなく Claude Code / Codex に投入できる雛形を `config/` に置く。
 
 雛形を編集しても実際のグローバル設定には自動反映されない。運用へ反映する場合は、配置先の実ファイル、MCP 設定、shell profile、GitHub リモート設定を確認し、対象クライアントで読み込み状態まで検証する。
