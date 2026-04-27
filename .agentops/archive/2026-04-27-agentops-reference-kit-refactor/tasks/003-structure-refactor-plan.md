@@ -1,7 +1,7 @@
 # 003 structure refactor plan
 
 parent_plan: 2026-04-27-agentops-reference-kit-refactor
-status: pending
+status: completed
 
 ## 実行内容
 
@@ -34,3 +34,11 @@ status: pending
 
 - 既存の `skills/` や `workflows/` を削ると、ユーザーが期待する参照資料が失われる。
 - 移動先ディレクトリ構成に合意がない。
+
+## 完了メモ
+
+- `rules/`、`skills/`、`workflows/` の全ファイルを棚卸しした。
+- README、docs、config、workflows、skills、`.agentops` からの参照関係を確認した。
+- `docs/15-reference-kit-structure.md` に、現役参照資料、`examples/` 候補、`templates/` 候補、`checklists/` 候補、archive 候補を分類案として記録した。
+- 「正本」「投影物」などの強い語彙が残る箇所を、構造整理と合わせて扱う候補として記録した。
+- `rules/`、`skills/`、`workflows/` 本体の移動、削除、archive 化は実施していない。
