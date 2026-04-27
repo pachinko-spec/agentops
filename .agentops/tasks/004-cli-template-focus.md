@@ -20,6 +20,13 @@ status: pending
 - README の反映プロンプトと config 参照雛形が矛盾していない。
 - CLI 固有仕様を固定しすぎていない。
 
+## 完了時の後処理
+
+- 完了した task は `.agentops/tasks/` 直下に残さず、対応する `.agentops/archive/<parent_plan>/tasks/` へ移す。
+- 完了した `.agentops/task-plans/current.md` は `.agentops/archive/<parent_plan>/task-plans/` へ移し、次に着手する task に合わせて新しい `current.md` を作る。
+- `.agentops/prompts/next-session.md` は、次に読むべき `current.md` と task を指す内容へ更新し、古い plan や完了済み task を入口にしない。
+- `scripts/agentops-watch check --projects config/projects.yml` で、完了済み task が未完了件数に残っていないことを確認する。
+
 ## 停止条件
 
 - 公式 docs 確認が必要な仕様を、未確認のまま固定しそうになった。
