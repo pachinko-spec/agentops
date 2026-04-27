@@ -65,8 +65,8 @@
 Claude Code と Codex は、相互にCLI Wrapper経由で別モデルをサブエージェントとして使う。
 
 ```text
-agentops delegate --to codex --role reviewer --model review_frontier --effort xhigh --input .agentops/plans/current.md
-agentops delegate --to claude --role architect --model architect_frontier --effort xhigh --input .agentops/plans/current.md
+agentops delegate --to codex --role review_frontier --model <codex-model-id> --effort xhigh --input .agentops/plans/current.md
+agentops delegate --to claude --role architect_frontier --model <claude-model-id> --effort xhigh --input .agentops/plans/current.md
 ```
 
 委譲結果は `.agentops/runs/{run_id}/` に保存する。

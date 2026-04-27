@@ -42,6 +42,10 @@ config/
 
 shell scriptはcronから呼ぶ薄い入口にする。JSON処理、GitHub API、Discord webhook、日付判定はPythonまたはNodeで実装する。
 
+現在の最小実装は `scripts/agentops-watch` と `tools/agentops_monitor/` に置く。
+標準ライブラリだけでローカル Git 状態、`.agentops/runs/`、`.agentops/tasks/`、`.agentops/handoffs/`、`freshness-sources.yml` の日付を確認する。
+詳細は [監視CLI仕様](11-monitoring-cli.md) を参照する。
+
 ## Discord通知
 
 Incoming Webhookを使う。Webhook URLはリポジトリに置かず、環境変数またはOS側のsecretに置く。

@@ -1,0 +1,24 @@
+# agentops-watch が日付ベースで陳腐化を確認する一次情報リストです。
+# URL の取得はこの最小実装では行わず、日本時間基準の last_checked の古さを検出します。
+
+sources:
+  - name: OpenAI docs
+    kind: docs
+    url: https://platform.openai.com/docs
+    max_age_days: 30
+    last_checked: 2026-04-27
+  - name: Anthropic Claude Code docs
+    kind: docs
+    url: https://docs.anthropic.com/
+    max_age_days: 30
+    last_checked: 2026-04-27
+  - name: Node.js LTS
+    kind: runtime
+    url: https://nodejs.org/en/about/previous-releases
+    max_age_days: 30
+    last_checked: 2026-04-27
+  - name: Python releases
+    kind: runtime
+    url: https://www.python.org/downloads/
+    max_age_days: 30
+    last_checked: 2026-04-27

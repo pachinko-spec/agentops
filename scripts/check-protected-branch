@@ -1,0 +1,25 @@
+#!/usr/bin/env sh
+set -eu
+
+# リベースや CI の detached HEAD ではブランチ名がないため、ここでは拒否しない。
+branch=$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)
+if [ -z "$branch" ]; then
+  exit 0
+fi
+
+# リリースブランチなどを扱えるよう、保護対象はプロジェクト側で上書き可能にする。
+protected=${AGENTOPS_PROTECTED_BRANCHES:-"main master develop"}
+allow=${AGENTOPS_ALLOW_PROTECTED:-0}
+
+for name in $protected; do
+  if [ "$branch" = "$name" ]; then
+    # 例外許可は明示的かつ目立つ出力にし、main 作業の見落としを防ぐ。
+    if [ "$allow" = "1" ]; then
+      printf '%s\n' "agentops: protected branch '$branch' allowed by AGENTOPS_ALLOW_PROTECTED=1"
+      exit 0
+    fi
+    printf '%s\n' "agentops: refusing to work directly on protected branch '$branch'" >&2
+    printf '%s\n' "agentops: create a work branch first, for example: git switch -c codex/<task>" >&2
+    exit 1
+  fi
+done

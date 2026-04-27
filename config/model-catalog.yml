@@ -1,0 +1,156 @@
+# Claude Code / Codex 共通のモデルルーティング雛形です。
+# このリポジトリ専用ではなく、グローバル運用または各プロジェクトの .agentops/ へコピーして使います。
+# 正式な CLI/API model id は使用直前に公式 docs で確認してください。
+
+schema_version: 1
+scope: global-template
+last_reviewed: 2026-04-27
+
+selection_policy:
+  binding: advisory
+  description: このカタログは固定配車表ではなく、オーケストレーターがモデル選択するときの候補表と最低ラインです。
+  orchestrator_may_override: true
+  resolution_order:
+    - user_explicit_instruction
+    - project_local_model_catalog
+    - task_risk_and_domain
+    - role_default
+    - current_cli_availability
+    - cost_latency_context_budget
+  override_rules:
+    - オーケストレーターは、公式 docs で確認済みの model id、現在の CLI 対応状況、タスクのリスクに応じて候補を上書きしてよい。
+    - 高リスク領域を低推論モデルへ下げる場合は、ユーザー明示指示または明確な理由を run log / PR / handoff に残す。
+    - model_id が null の候補は、未確認なので実行に使わない。
+  high_risk_triggers:
+    - authentication
+    - authorization
+    - session_management
+    - secrets_or_credentials
+    - cryptography
+    - payments_or_billing
+    - privacy_or_personal_data
+    - public_api_contract
+    - database_migration_or_data_loss
+    - deployment_or_infra_change
+    - security_fix
+    - incident_response
+  escalation_rules:
+    - when: high_risk_design
+      minimum_role: architect_frontier
+      minimum_effort: xhigh
+      independent_review_role: review_frontier
+    - when: high_risk_implementation
+      minimum_role: coding_frontier
+      minimum_effort: high
+      prefer_effort: xhigh
+      independent_review_role: review_frontier
+    - when: security_fix
+      minimum_role: coding_frontier
+      minimum_effort: xhigh
+      independent_review_role: review_frontier
+      notes: セキュリティ修正は差分が小さくても高リスク扱いにする。
+    - when: low_risk_mechanical_change
+      allowed_roles:
+        - coding_fast
+        - docs_agent
+      maximum_scope: typo、コメント、docs、テスト期待値の明確な更新、局所的なリネーム
+  prohibited_downgrades:
+    - coding_fast は authentication / authorization / secrets / cryptography / payments / security_fix には使わない。
+    - research_fast の調査結果だけで高リスク設計を確定しない。
+    - docs_agent だけで API 契約やセキュリティ方針を変更しない。
+
+roles:
+  - role: orchestrator_frontier
+    purpose: 複雑タスクの分解、委譲計画、統合判断、停止条件判断
+    default_effort: xhigh
+    candidates:
+      - target_cli: codex
+        provider: openai
+        model_family: frontier reasoning model
+        model_id: null
+        notes: Codex CLI で利用可能な最新の高推論モデルを公式 docs で確認して設定する。
+      - target_cli: claude
+        provider: anthropic
+        model_family: frontier reasoning model
+        model_id: null
+        notes: Claude Code CLI で利用可能な最新の高推論モデルを公式 docs で確認して設定する。
+
+  - role: architect_frontier
+    purpose: 複雑な設計、アーキテクチャ判断、ハイリスク実装方針
+    default_effort: xhigh
+    candidates:
+      - target_cli: codex
+        provider: openai
+        model_family: frontier reasoning model
+        model_id: null
+        notes: GPT 系列に固定しない。Codex CLI 側の現在の model id を確認して埋める。
+      - target_cli: claude
+        provider: anthropic
+        model_family: frontier reasoning model
+        model_id: null
+        notes: Claude 側では Anthropic の対応 model id を確認して埋める。
+
+  - role: review_frontier
+    purpose: 設計レビュー、コードレビュー、セキュリティ観点、品質ゲート判断
+    default_effort: xhigh
+    candidates:
+      - target_cli: codex
+        provider: openai
+        model_family: frontier reasoning model
+        model_id: null
+      - target_cli: claude
+        provider: anthropic
+        model_family: frontier reasoning model
+        model_id: null
+
+  - role: coding_frontier
+    purpose: 通常実装、難所の修正、レビュー後の中規模修正
+    default_effort: high
+    candidates:
+      - target_cli: codex
+        provider: openai
+        model_family: coding-optimized model
+        model_id: null
+      - target_cli: claude
+        provider: anthropic
+        model_family: balanced coding model
+        model_id: null
+
+  - role: coding_fast
+    purpose: typo、軽微修正、レビュー後の小修正
+    default_effort: medium
+    candidates:
+      - target_cli: codex
+        provider: openai
+        model_family: fast coding model
+        model_id: null
+      - target_cli: claude
+        provider: anthropic
+        model_family: fast balanced model
+        model_id: null
+
+  - role: research_fast
+    purpose: コード調査、docs調査、差分整理
+    default_effort: medium
+    candidates:
+      - target_cli: codex
+        provider: openai
+        model_family: fast reasoning model
+        model_id: null
+      - target_cli: claude
+        provider: anthropic
+        model_family: fast reasoning model
+        model_id: null
+
+  - role: docs_agent
+    purpose: README、設計docs、PR本文、引き継ぎ整備
+    default_effort: medium
+    candidates:
+      - target_cli: codex
+        provider: openai
+        model_family: fast writing/coding model
+        model_id: null
+      - target_cli: claude
+        provider: anthropic
+        model_family: fast writing/coding model
+        model_id: null

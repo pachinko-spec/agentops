@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+set -eu
+
+# コピーされたフックでも動くよう、実行時にプロジェクト root を解決する。
+ROOT=$(git rev-parse --show-toplevel)
+"$ROOT/scripts/check-protected-branch"

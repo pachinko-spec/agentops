@@ -1,0 +1,59 @@
+#!/usr/bin/env sh
+set -eu
+
+mode=copy
+target=.
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --mode)
+      mode=${2:-}
+      shift 2
+      ;;
+    --target)
+      target=${2:-}
+      shift 2
+      ;;
+    -h|--help)
+      cat <<'EOF'
+Usage: scripts/install-hooks [--target PATH] [--mode copy|symlink]
+
+Install agentops quality-gate hooks into PATH/.git/hooks.
+The target project must contain the agentops scripts directory, or the hooks
+must be adjusted to call a globally installed agentops command.
+EOF
+      exit 0
+      ;;
+    *)
+      printf '%s\n' "unknown option: $1" >&2
+      exit 2
+      ;;
+  esac
+done
+
+case "$mode" in
+  copy|symlink) ;;
+  *)
+    printf '%s\n' "mode must be copy or symlink" >&2
+    exit 2
+    ;;
+esac
+
+# 呼び出し元 cwd ではなく、この script 基準で hook 雛形を探す。
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+HOOK_SRC="$SCRIPT_DIR/hooks"
+
+# 通常リポジトリと linked worktree の両方に対応するため git rev-parse を使う。
+GIT_DIR=$(git -C "$target" rev-parse --git-dir)
+HOOK_DST=$(CDPATH= cd -- "$target/$GIT_DIR/hooks" && pwd)
+
+for hook in pre-commit pre-push; do
+  # コピーは移植性重視、symlink はこの repo の更新追従を重視するモード。
+  if [ "$mode" = "symlink" ]; then
+    ln -sf "$HOOK_SRC/$hook" "$HOOK_DST/$hook"
+  else
+    cp "$HOOK_SRC/$hook" "$HOOK_DST/$hook"
+  fi
+  chmod +x "$HOOK_DST/$hook"
+  printf '%s\n' "installed $hook -> $HOOK_DST/$hook"
+done

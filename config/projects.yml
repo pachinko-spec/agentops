@@ -1,0 +1,10 @@
+# agentops-watch が読む監視対象プロジェクトの雛形です。
+# secret は書かず、通知先は環境変数で渡します。
+
+projects:
+  - name: agentops
+    path: .
+    default_branch: main
+    stuck_run_hours: 2
+    max_behind_commits: 10
+    max_ahead_commits: 50

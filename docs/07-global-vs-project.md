@@ -37,3 +37,6 @@
 2. 複数プロジェクトで再利用できると判断したらグローバル化する。
 3. スキル化できるものは `skills/` に設計を書く。
 4. 安定したら Claude Code / Codex の実際のグローバル設定へ反映する。
+
+実設定雛形は `config/claude/CLAUDE.md` と `config/codex/AGENTS.md` に置く。
+詳細は [実設定雛形](08-config-templates.md) を参照する。

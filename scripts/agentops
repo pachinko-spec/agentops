@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+set -eu
+
+# フックや cron から cwd に依存せず呼べるよう、このファイル基準で解決する。
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+ROOT_DIR=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
+
+# まだパッケージ化しないため、checkout 自体を PYTHONPATH に載せる。
+PYTHONPATH="$ROOT_DIR${PYTHONPATH:+:$PYTHONPATH}" exec python3 -m tools.agentops_cli "$@"

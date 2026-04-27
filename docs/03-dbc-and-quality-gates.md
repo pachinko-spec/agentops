@@ -40,6 +40,16 @@
 - テスト失敗状態ではcommit/pushしない。
 - 例外が必要な場合はユーザーに確認し、commit messageまたはPR本文に理由を書く。
 
+このリポジトリでは、実装雛形として次を提供する。
+
+- `scripts/check-protected-branch`
+- `scripts/check-tests-before-push`
+- `scripts/hooks/pre-commit`
+- `scripts/hooks/pre-push`
+- `scripts/install-hooks`
+
+詳細は [hooks品質ゲート](09-hooks-quality-gates.md) を参照する。
+
 ## PR条件
 
 - PR本文に実施内容、検証結果、未解決リスクを書く。

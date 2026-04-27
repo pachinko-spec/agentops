@@ -1,0 +1,29 @@
+#!/usr/bin/env sh
+set -eu
+
+# 呼び出し元や CI が今回だけの gate を選べるよう、環境変数を最優先する。
+command_value=${AGENTOPS_TEST_COMMAND:-}
+
+# シェル profile を読まないフックでも使えるよう、プロジェクト内の設定ファイルも見る。
+if [ -z "$command_value" ] && [ -f ".agentops/test-command" ]; then
+  # 最初の空行・コメント以外の行を検証コマンドとして使う。
+  command_value=$(sed -n '/^[[:space:]]*#/d; /^[[:space:]]*$/d; p; q' .agentops/test-command)
+fi
+
+if [ -z "$command_value" ] && [ -f "config/test-command" ]; then
+  command_value=$(sed -n '/^[[:space:]]*#/d; /^[[:space:]]*$/d; p; q' config/test-command)
+fi
+
+if [ -z "$command_value" ]; then
+  if [ "${AGENTOPS_ALLOW_NO_TESTS:-0}" = "1" ]; then
+    printf '%s\n' "agentops: no test command configured; allowed by AGENTOPS_ALLOW_NO_TESTS=1"
+    exit 0
+  fi
+  printf '%s\n' "agentops: refusing push because no test command is configured" >&2
+  printf '%s\n' "agentops: set AGENTOPS_TEST_COMMAND or create .agentops/test-command" >&2
+  exit 1
+fi
+
+printf '%s\n' "agentops: running pre-push quality gate: $command_value"
+# 複合コマンドを実行できるようにしつつ、Bash 専用の前提は避ける。
+sh -c "$command_value"
