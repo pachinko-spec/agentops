@@ -1,7 +1,7 @@
 # 004 cli template focus
 
 parent_plan: 2026-04-27-agentops-reference-kit-refactor
-status: pending
+status: completed
 
 ## 実行内容
 
@@ -14,6 +14,14 @@ status: pending
 - Claude Code 用テンプレートと Codex 用テンプレートの役割が明確になっている。
 - 共通思想と CLI 固有設定の境界が明確になっている。
 - グローバル設定反映時に使うチェックリスト案がある。
+
+## 完了内容
+
+- `docs/08-config-templates.md` に、`CLAUDE.md` / `AGENTS.md` と settings / config の役割分担、CLI 別の確認観点を追加した。
+- `docs/16-global-settings-application-checklist.md` を作成し、MCP、hooks、skills、subagents、permissions、sandbox、approval、Codex app-server 再起動確認を含む反映チェックリストを整理した。
+- `config/claude/CLAUDE.md` と `config/codex/AGENTS.md` に、グローバル設定本文へ置く内容と CLI 固有設定として反映時に確認する内容を追記した。
+- README の docs 一覧と実装済み入口に、グローバル設定反映チェックリストを追加した。
+- `rules/`、`skills/`、`workflows/` の大規模な移動、削除、archive 化は実施していない。
 
 ## 検証
 

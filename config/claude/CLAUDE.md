@@ -15,6 +15,14 @@
 - 主なリリース先は Cloudflare Workers / Pages、Xserver レンタルサーバー、GCP、一部ローカルサーバー。
 - 実プロジェクトでは、テンプレートよりもプロジェクト固有のコマンド、デプロイ手順、secret管理、運用手順を優先する。
 
+## `CLAUDE.md` の書き方
+
+- `CLAUDE.md` には、安定して使う作業思想、参照優先順位、ユーザー個人の開発方針、停止条件、検証方針を書く。
+- settings、MCP、hooks、skills、subagents、permission の具体値は、反映時点の Claude Code 公式 docs、`claude --help`、現在の実設定を確認して、対象ファイルへ分ける。
+- 長い手順、観点別チェック、繰り返し使う作業は、`CLAUDE.md` に詰め込まず、skills、workflows、checklists へ分ける。
+- `agentops` の `rules/`、`skills/`、`workflows/` は参照候補であり、そのまま全量コピーしない。実環境に合わせて採用、調整、見送りを判断する。
+- 実プロジェクト固有の test / build / deploy / rollback コマンド、secret、環境名、remote URL は、グローバル設定ではなくプロジェクト側に置く。
+
 ## 基本方針
 
 - 応答、commit message、Issue/PR、レビューコメント、引き継ぎ文書は日本語で書く。
@@ -35,9 +43,20 @@
 ## MCP と外部知識
 
 - MCP 対応クライアントで Context7 と Google Stitch が未導入なら導入する。
-- API key は shell profile（例: `.bashrv`）で export 済みの `CONTEXT7_API_KEY` と `STITCH_API_KEY` を使う。
+- API key は shell profile（例: `.bashrc`）で export 済みの `CONTEXT7_API_KEY` と `STITCH_API_KEY` を使う。
 - secret 値をリポジトリ、PR、ログ、handoff に書かない。MCP 設定では環境変数参照またはクライアントの secret 管理を使う。
 - Context7 や Google Stitch の導入方法、transport、認証方式は変化しやすいため、導入時は公式 docs、GitHub、release notes、クライアント側 MCP docs を確認する。
+
+## CLI 固有設定の確認
+
+- 反映前に `claude --version`、`claude --help`、既存の `~/.claude/CLAUDE.md`、`~/.claude/settings.json`、MCP 設定、skill/subagent/hook 設定を確認する。
+- `CLAUDE.md` の読み込み階層、settings の優先順位、permission の allow / ask / deny、additional directories、bypass 系 mode の扱いを公式 docs で確認する。
+- MCP は scope、transport、OAuth、secret 管理、project shared config の承認、出力上限、削除手順まで確認する。
+- hooks は event、matcher、blocking 可否、timeout、失敗時挙動、ログ出力を確認し、成功ケースと失敗ケースを両方試す。
+- skills は user / project / plugin の置き場、frontmatter、手動起動と自動起動、tool pre-approval、現在セッションでの再読み込み条件を確認する。
+- subagents は user / project の置き場、tool 権限、MCP tool の継承、メインエージェントの統合責任を確認する。
+- 反映後は `/memory`、`/config`、`/mcp` など、現在の Claude Code が提供する確認方法で読み込み状態を検証する。
+- 詳細な反映手順は `docs/16-global-settings-application-checklist.md` を参照する。
 
 ## 曖昧な指示の扱い
 

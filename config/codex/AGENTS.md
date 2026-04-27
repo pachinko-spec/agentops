@@ -15,6 +15,14 @@
 - 主なリリース先は Cloudflare Workers / Pages、Xserver レンタルサーバー、GCP、一部ローカルサーバー。
 - 実プロジェクトでは、テンプレートよりもプロジェクト固有のコマンド、デプロイ手順、secret管理、運用手順を優先する。
 
+## `AGENTS.md` の書き方
+
+- `AGENTS.md` には、安定して使う作業思想、参照優先順位、ユーザー個人の開発方針、停止条件、検証方針を書く。
+- `config.toml`、MCP、hooks、skills、subagents、sandbox、approval の具体値は、反映時点の Codex 公式 docs、`codex --help`、現在の実設定を確認して、対象ファイルへ分ける。
+- 長い手順、観点別チェック、繰り返し使う作業は、`AGENTS.md` に詰め込まず、skills、workflows、checklists へ分ける。
+- `agentops` の `rules/`、`skills/`、`workflows/` は参照候補であり、そのまま全量コピーしない。実環境に合わせて採用、調整、見送りを判断する。
+- 実プロジェクト固有の test / build / deploy / rollback コマンド、secret、環境名、remote URL は、グローバル設定ではなくプロジェクト側に置く。
+
 ## 基本方針
 
 - 応答、commit message、Issue/PR、レビューコメント、引き継ぎ文書は日本語で書く。
@@ -35,9 +43,22 @@
 ## MCP と外部知識
 
 - MCP 対応クライアントで Context7 と Google Stitch が未導入なら導入する。
-- API key は shell profile（例: `.bashrv`）で export 済みの `CONTEXT7_API_KEY` と `STITCH_API_KEY` を使う。
+- API key は shell profile（例: `.bashrc`）で export 済みの `CONTEXT7_API_KEY` と `STITCH_API_KEY` を使う。
 - secret 値をリポジトリ、PR、ログ、handoff に書かない。MCP 設定では環境変数参照またはクライアントの secret 管理を使う。
 - Context7 や Google Stitch の導入方法、transport、認証方式は変化しやすいため、導入時は公式 docs、GitHub、release notes、クライアント側 MCP docs を確認する。
+
+## CLI 固有設定の確認
+
+- 反映前に `codex --version`、`codex --help`、既存の `~/.codex/AGENTS.md`、`~/.codex/config.toml`、MCP 設定、skill/subagent/hook 設定を確認する。
+- `AGENTS.md` の読み込み階層、`AGENTS.override.md` の有無、config の profile / project trust / CLI 引数の優先順位を公式 docs で確認する。
+- MCP は server 設定、tool approval、parallel tool call の安全性、secret 管理、削除手順まで確認する。
+- hooks は Codex の現在仕様、設定場所、sandbox / approval との関係、失敗時挙動、ログ出力を確認する。
+- skills は user / project / plugin の置き場、読み込み条件、実行環境、supporting files の扱いを確認する。
+- subagents は設定場所、tool 権限、delegation と workspace 共有条件、メインエージェントの統合責任を確認する。
+- sandbox / approval は `sandbox_mode`、workspace-write の writable roots / network、承認 policy、untrusted repository での挙動を確認する。
+- Codex CLI の version switch、再インストール、plugin / skill / config 変更後は、古い `codex app-server` が残っていないか確認し、必要なら Codex Desktop / CLI / app-server を再起動する。
+- 反映後は実際に Codex を起動し、グローバル指示、MCP、hooks、skills、subagents、sandbox / approval が読み込まれていることを検証する。
+- 詳細な反映手順は `docs/16-global-settings-application-checklist.md` を参照する。
 
 ## 曖昧な指示の扱い
 

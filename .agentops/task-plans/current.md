@@ -1,37 +1,36 @@
-# Task Plan: cli template focus
+# Task Plan: migration and archive
 
 plan_id: 2026-04-27-agentops-reference-kit-refactor
 status: pending
 created_at: 2026-04-27
 timezone: Asia/Tokyo
 
-## 今回セッションの目的
+## 次セッションの目的
 
-`.agentops/tasks/004-cli-template-focus.md` から着手し、Claude Code / Codex のグローバル設定を書くためのベストプラクティス、テンプレート、チェックリストの境界を整理する。
+`.agentops/tasks/005-migration-and-archive.md` から着手し、不要または過剰な見本群の扱い、archive 方針、参照切れ確認方法を整理する。
 
 ## 実行順
 
-1. 作業ブランチを切る。
-2. `.agentops/tasks/004-cli-template-focus.md` を読む。
-3. `docs/15-reference-kit-structure.md` の分類案を確認する。
-4. README、docs、config にある Claude Code / Codex の設定雛形と反映プロンプトを確認する。
-5. 共通思想、CLI 固有設定、MCP、hooks、skills、subagents、permissions、sandbox、approval の確認観点を分ける。
-6. グローバル設定反映時に使うチェックリスト案を文書化する。
-7. `.agentops/tasks/004-cli-template-focus.md` の状態と残タスクを更新する。
-8. `004` が完了した場合は、完了済み task と今回の `current.md` を `.agentops/archive/<plan-id>/` へ移す。
-9. 次に着手する task に合わせて `.agentops/task-plans/current.md` と `.agentops/prompts/next-session.md` を更新する。
-10. 差分を確認する。
-11. `git diff --check` と `scripts/agentops-watch check --projects config/projects.yml` を実行する。
-12. commit、push、PR作成、GitHub上でのmerge、main同期確認を行う。
+1. 作業ブランチを確認し、必要なら `codex/005-migration-and-archive` のような新しい作業ブランチを切る。
+2. `.agentops/tasks/005-migration-and-archive.md` を読む。
+3. `docs/15-reference-kit-structure.md` と `docs/16-global-settings-application-checklist.md` を確認する。
+4. `rules/`、`skills/`、`workflows/` の移行候補、archive 候補、checklists / templates / examples 候補を再確認する。
+5. README、docs、config、workflows、skills、`.agentops` からの参照を `rg` で確認する。
+6. 大規模削除や移動に入る前に、移行方針と影響範囲をユーザーへ提示して承認を得る。
+7. 承認範囲内で最小限の移動、参照更新、archive 方針の文書化を行う。
+8. `005` が完了した場合は、完了済み task と今回の `current.md` を `.agentops/archive/<plan-id>/` へ移す。
+9. 次に着手する task がなければ、`.agentops/prompts/next-session.md` に残タスクなし、または次の未完了作業を明記する。
+10. `git diff --check` と `scripts/agentops-watch check --projects config/projects.yml` を実行する。
+11. commit、push、PR作成、GitHub上でのmerge、main同期確認を行う。
 
 ## 今回は行わないこと
 
-- `rules/`、`skills/`、`workflows/` の大規模な移動、削除、archive 化。
-- Claude Code / Codex の実グローバル設定変更。
+- ユーザー承認なしに大規模削除やディレクトリ移動を行うこと。
 - CLI 固有仕様を公式 docs 未確認のまま固定すること。
+- 実グローバル設定へ直接反映すること。
 
 ## 停止条件
 
-- 公式 docs 確認が必要な仕様を、未確認のまま固定しそうになった。
-- Claude Code と Codex の差分を共通テンプレートで吸収できない。
-- 実設定へ反映するにはユーザー承認が必要な変更が出た。
+- 大量削除やディレクトリ移動が必要になったが、ユーザー承認がない。
+- 参照切れや既存運用への影響が大きい。
+- どのファイルを現役参照資料として残すか判断できない。
