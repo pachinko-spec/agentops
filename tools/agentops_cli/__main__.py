@@ -249,6 +249,22 @@ def subprocess_output_text(value: str | bytes | None) -> str:
     return value
 
 
+def markdown_code_block(content: str, info: str = "text") -> str:
+    """content 内の backtick fence と衝突しない Markdown code block を返す。"""
+    longest_backtick_run = 0
+    current_run = 0
+    for char in content:
+        if char == "`":
+            current_run += 1
+            longest_backtick_run = max(longest_backtick_run, current_run)
+        else:
+            current_run = 0
+
+    fence = "`" * max(3, longest_backtick_run + 1)
+    closing_newline = "\n" if content and not content.endswith("\n") else ""
+    return f"{fence}{info}\n{content}{closing_newline}{fence}\n"
+
+
 def mark_failed_run(
     *,
     status_file: Path,
@@ -380,7 +396,7 @@ def delegate(args: argparse.Namespace) -> int:
             "# Dry Run\n\n"
             "External agent command was not executed.\n\n"
             "## Command\n\n"
-            f"```text\n{shlex.join(command)}\n```\n",
+            f"{markdown_code_block(shlex.join(command))}",
             encoding="utf-8",
         )
         status["completed_at"] = jst_timestamp()
@@ -406,9 +422,9 @@ def delegate(args: argparse.Namespace) -> int:
             f"- exit_code: {completed.returncode}\n"
             f"- completed_at: {jst_timestamp()}\n\n"
             "## Stdout\n\n"
-            f"```text\n{completed.stdout}\n```\n\n"
+            f"{markdown_code_block(completed.stdout)}\n"
             "## Stderr\n\n"
-            f"```text\n{completed.stderr}\n```\n",
+            f"{markdown_code_block(completed.stderr)}",
             encoding="utf-8",
         )
         status["state"] = "succeeded" if completed.returncode == 0 else "failed"

@@ -5,6 +5,8 @@ from contextlib import redirect_stderr, redirect_stdout
 import io
 import json
 from pathlib import Path
+import shlex
+import sys
 import tempfile
 import unittest
 
@@ -282,6 +284,58 @@ class DelegateDryRunTests(unittest.TestCase):
             status = json.loads(status_file.read_text(encoding="utf-8"))
             self.assertEqual(status["state"], "failed")
             self.assertIn("unknown command template variable", status["error"])
+
+
+class ResultMarkdownTests(unittest.TestCase):
+    def test_markdown_code_block_uses_fence_longer_than_backtick_runs(self) -> None:
+        block = cli.markdown_code_block("outer ```\ninner ````\n")
+
+        self.assertTrue(block.startswith("`````text\n"))
+        self.assertTrue(block.endswith("`````\n"))
+
+    def test_markdown_code_block_keeps_empty_content_compact(self) -> None:
+        self.assertEqual(cli.markdown_code_block(""), "```text\n```\n")
+
+    def test_delegate_result_preserves_output_and_avoids_fence_collision(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            (project / ".agentops" / "runs").mkdir(parents=True)
+            script = project / "emit_fences.py"
+            script.write_text(
+                "import sys\n"
+                "sys.stdout.write('stdout has ``` inside\\n')\n"
+                "sys.stderr.write('stderr has ```` inside\\n')\n",
+                encoding="utf-8",
+            )
+
+            rc = run_cli(
+                [
+                    "delegate",
+                    "--to",
+                    "codex",
+                    "--role",
+                    "fence",
+                    "--effort",
+                    "high",
+                    "--message",
+                    "emit fences",
+                    "--project",
+                    str(project),
+                    "--run-id",
+                    "fence-output",
+                    "--command-template",
+                    f"{shlex.quote(sys.executable)} {shlex.quote(str(script))}",
+                ]
+            )
+
+            self.assertEqual(rc, 0)
+            run_dir = project / ".agentops" / "runs" / "fence-output"
+            self.assertEqual((run_dir / "stdout.log").read_text(encoding="utf-8"), "stdout has ``` inside\n")
+            self.assertEqual((run_dir / "stderr.log").read_text(encoding="utf-8"), "stderr has ```` inside\n")
+
+            result = (run_dir / "result.md").read_text(encoding="utf-8")
+            self.assertIn("````text\nstdout has ``` inside\n````\n", result)
+            self.assertIn("`````text\nstderr has ```` inside\n`````\n", result)
 
 
 if __name__ == "__main__":
