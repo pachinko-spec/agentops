@@ -1,6 +1,8 @@
 # config
 
-監視対象プロジェクト、陳腐化チェック対象、通知設定の雛形を置く場所です。
+監視対象プロジェクト、陳腐化チェック対象、通知設定、実設定へ投影する雛形を置く場所です。
+
+このディレクトリの設定は、agentops自体だけでなく、`~/dev` 配下の実プロジェクトで使うテンプレートの前提も表します。個別プロジェクトのsecret、環境名、デプロイ先の実値はここへ固定せず、プロジェクト側または環境変数へ置きます。
 
 secretやDiscord webhook URLはこのリポジトリに保存しません。Context7 と Google Stitch の API key は shell profile（例: `.bashrv`）や OS secret に置き、`CONTEXT7_API_KEY` / `STITCH_API_KEY` として参照します。
 

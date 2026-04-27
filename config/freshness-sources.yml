@@ -42,3 +42,48 @@ sources:
     url: https://www.python.org/downloads/
     max_age_days: 30
     last_checked: 2026-04-27
+  - name: Cloudflare Workers docs
+    kind: deploy
+    url: https://developers.cloudflare.com/workers/
+    max_age_days: 30
+    last_checked: 2026-04-27
+  - name: Cloudflare Pages framework guides
+    kind: deploy
+    url: https://developers.cloudflare.com/pages/framework-guides/
+    max_age_days: 30
+    last_checked: 2026-04-27
+  - name: Nuxt deployment docs
+    kind: framework
+    url: https://nuxt.com/deploy
+    max_age_days: 30
+    last_checked: 2026-04-27
+  - name: Next.js deployment docs
+    kind: framework
+    url: https://nextjs.org/docs/app/getting-started/deploying
+    max_age_days: 30
+    last_checked: 2026-04-27
+  - name: PHP supported versions
+    kind: runtime
+    url: https://www.php.net/supported-versions.php
+    max_age_days: 30
+    last_checked: 2026-04-27
+  - name: Go releases
+    kind: runtime
+    url: https://go.dev/doc/devel/release
+    max_age_days: 30
+    last_checked: 2026-04-27
+  - name: Google Cloud Run docs
+    kind: deploy
+    url: https://cloud.google.com/run/docs
+    max_age_days: 30
+    last_checked: 2026-04-27
+  - name: Google App Engine standard docs
+    kind: deploy
+    url: https://cloud.google.com/appengine/docs/standard/
+    max_age_days: 30
+    last_checked: 2026-04-27
+  - name: Xserver manual
+    kind: deploy
+    url: https://www.xserver.ne.jp/manual/
+    max_age_days: 30
+    last_checked: 2026-04-27

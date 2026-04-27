@@ -6,6 +6,15 @@
 
 プロジェクト固有の `AGENTS.md`、`CLAUDE.md`、`.agentops/` がある場合は、それらを優先してください。
 
+## この雛形の前提
+
+- `agentops` 自体はグローバル設定用の設計思想保守リポジトリであり、実プロジェクトそのものではない。
+- `rules/`、`skills/`、`workflows/` は、グローバル設定へ反映する参照テンプレートであり、実プロジェクトで使える粒度を保つ。
+- 実プロジェクト作業では、原則として `~/dev` 配下を対象にする。dotfiles は明示依頼がない限り対象外にする。
+- 主な対象は Nuxt、Next.js、PHP、Go などの Web システム。
+- 主なリリース先は Cloudflare Workers / Pages、Xserver レンタルサーバー、GCP、一部ローカルサーバー。
+- 実プロジェクトでは、テンプレートよりもプロジェクト固有のコマンド、デプロイ手順、secret管理、運用手順を優先する。
+
 ## 基本方針
 
 - 応答、commit message、Issue/PR、レビューコメント、引き継ぎ文書は日本語で書く。
@@ -40,15 +49,15 @@
 ## 作業サイクル
 
 1. ブランチと作業ツリーを確認する。
-2. README、docs、プロジェクト固有設定を読む。
-3. 影響範囲、完了条件、停止条件を短く設計する。
+2. README、docs、プロジェクト固有設定を読む。実プロジェクトでは `~/dev` 配下、dotfiles除外、スタック、デプロイ先、検証コマンドを確認する。
+3. 影響範囲、完了条件、停止条件を短く設計する。必要なら `workflows/project-intake.md`、`web-system-design.md`、`deployment-target-selection.md` を使う。
 4. 計画をユーザーへ提示し、承認を得る。承認省略条件を満たす場合でも、今回セッションの小分け計画を明示する。
 5. 必要に応じて `.agentops/plans/current.md`、`.agentops/task-plans/current.md`、`.agentops/tasks/*.md` を更新する。
 6. 高リスクなら別モデルまたはサブエージェントで設計レビューを行う。
 7. 実装する。
 8. lint、型チェック、テスト、必要なら E2E / ブラウザ確認を行う。
-9. ドキュメントを更新する。
-10. 差分、検証結果、ドキュメント更新を自己レビューする。
+9. ドキュメントを更新する。API、環境変数、deploy、rollback、runbook、release notesへの影響も確認する。
+10. 差分、検証結果、ドキュメント更新を自己レビューする。外部公開や本番反映がある場合は release readiness も確認する。
 11. 必要な修正を行った場合は、修正後に必ず再レビューする。
 12. 完了したtaskは `.agentops/archive/<plan-id>/tasks/` へ移す。
 13. commit / push / GitHub PR 作成へ進む。
