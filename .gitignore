@@ -20,3 +20,7 @@ htmlcov/
 /.codex
 !/.codex/
 !/.codex/**
+
+# Claude Code runtime artifacts (ScheduleWakeup lockfile, plugin state cache).
+# Do not commit; recreated by the harness as needed.
+/.claude/
