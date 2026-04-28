@@ -1,3 +1,5 @@
+> DEPRECATED — see [DEPRECATED.md](DEPRECATED.md)
+
 # reference kit v1
 
 このディレクトリは、`rules/`、`skills/`、`workflows/` に具体的なルール、Skill、作業手順の実体を置いていた旧構造の退避先です。

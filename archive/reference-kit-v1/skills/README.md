@@ -1,3 +1,5 @@
+> DEPRECATED — see /archive/reference-kit-v1/DEPRECATED.md
+
 # skills
 
 グローバル化候補のskill設計を置く場所です。
