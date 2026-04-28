@@ -17,8 +17,9 @@ status: pending
 
 ## 完了時の後処理
 
-- 完了した task は `.agentops/archive/<parent_plan>/tasks/` へ移す。
-- 必要なら `.agentops/task-plans/current.md` と `.agentops/prompts/next-session.md` を更新する。
+- **commit 前**に完了した task を `.agentops/archive/<parent_plan>/tasks/` へ移す。`plans/current.md` と `task-plans/current.md` も同タイミングで `archive/<parent_plan>/` へ移す。
+- `archive/README.md` 時系列インデックスに当該 plan-id 行を追加する。
+- 必要なら `.agentops/prompts/next-session.md` を更新するか削除する（動的判定: tasks 未完了→tasks ベース／なければ handoffs ベース／両方なければ削除）。
 
 ## 停止条件
 

@@ -31,7 +31,7 @@ archive/
 - `workflows/`: AI エージェントに生成させる workflow 候補のカタログ。
 - `templates/claude/`: Claude Code 向けの CLAUDE.md、Skill、subagent 生成雛形。
 - `templates/codex/`: Codex 向けの AGENTS.md、Skill、subagent 生成雛形。
-- `templates/agentops/`: `.agentops` の plan、task-plan、task、next-session prompt サンプル。
+- `templates/agentops/`: `.agentops` の plan、task-plan、task、next-session prompt サンプル。`next-session prompt` は動的判定（tasks ベース／handoffs ベース／生成しない）の雛形として読む。
 - `archive/reference-kit-v1/`: 旧 `rules/`、`skills/`、`workflows/` 実体の退避先。
 
 ## 設計方針

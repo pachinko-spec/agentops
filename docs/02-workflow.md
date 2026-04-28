@@ -10,10 +10,16 @@
 
 `.agentops` では次の責務に分ける。
 
-- `.agentops/plans/current.md`: 大きい承認済みplan。原則最大1つ。
-- `.agentops/task-plans/current.md`: 今回セッションまたは復帰用の実行計画。
-- `.agentops/tasks/*.md`: 未完了、進行中、blockedの子task。
-- `.agentops/archive/<plan-id>/`: 完了、中止、置き換え済みのplan/task/task-plan。
+| パス | 役割 | 解像度 |
+|---|---|---|
+| `.agentops/plans/current.md` | 承認済みの大きいplan（原則最大1つ、親task一覧必須） | 計画全体 |
+| `.agentops/task-plans/current.md` | 今回セッション実行計画（親plan・フェーズ・時間予測） | セッション |
+| `.agentops/tasks/*.md` | plan内の作業単位（PR単位など）。新作業は次番号ファイルに追記。完了済みは `.agentops/archive/<plan-id>/tasks/` へ移す | 中 |
+| `.agentops/reviews/` | レビュー結果（P0/P1/P2/P3 分類） | 各レビュー |
+| `.agentops/runs/` | クロスモデル委譲の実行記録（ISO8601 timestamp + CLI 名） | 各実行 |
+| `.agentops/handoffs/` | **planで考えたtaskの範囲を超えた持ち越しのみ**（別planへの申し送り、長期 blocker、計画外で発生した観察事項など）。PR単位の進捗には使わない | planを跨ぐ |
+| `.agentops/prompts/next-session.md` | 次セッション投入プロンプト。動的に参照先を決める: `tasks/` に未完了があればtasksベース、なければ `handoffs/` ベース、両方なければ生成しない（既存ファイルがあれば削除） | エントリポイント |
+| `.agentops/archive/<plan-id>/` | 完了、中止、置き換え済みのplan/task-plan/task/reviews/handoffs。`archive/README.md` を完了plan時系列インデックスとして運用 | plan単位 |
 
 
 ## 標準サイクル
@@ -23,7 +29,7 @@
 3. 調査
 4. 不明点、懸念点、代替案、エスカレーション要否を整理する。
 5. 計画提示とユーザー承認
-6. task-planとtasks作成
+6. **実装着手前**に `.agentops/plans/current.md`、`.agentops/task-plans/current.md`、`.agentops/tasks/*.md` を生成する
 7. 設計
 8. 設計レビュー
 9. 実装
@@ -31,16 +37,19 @@
 11. ドキュメント更新
 12. 自己レビュー
 13. release readiness確認。外部公開や本番反映がある場合はrollbackと監視も確認する。
-14. commit
-15. push
-16. PR作成
-17. レビュー
-18. 修正
-19. 最終レビュー
-20. GitHub上でPRをマージ
-21. mainへ戻る
-22. remote main取得と同期確認
-23. 完了済みtaskとplanをarchiveへ移動
+14. **commit前**に `.agentops/` を整える
+    - 14a. 完了済み task と `plans/current.md`、`task-plans/current.md` を `.agentops/archive/<plan-id>/` へ移動する
+    - 14b. 完了 handoff は `archive/<plan-id>/handoffs/` へ移し、`handoffs/` 直下は進行中のみ残す
+    - 14c. `archive/README.md` 時系列インデックスに今回 plan-id 行を追加する
+15. commit
+16. push
+17. PR作成
+18. レビュー
+19. 修正
+20. 最終レビュー
+21. GitHub上でPRをマージ
+22. mainへ戻る
+23. remote main取得と同期確認
 24. マージ後報告
 
 長時間の委譲、再現が必要なバグ修正、UI/外部CLI/MCPを使う検証、モデルやpromptの退行確認では、調査後に harness spec を作る。小さな修正では既存の DbC とテスト条件で足りる。詳細は [Harness Engineering](12-harness-engineering.md) を参照する。
@@ -85,7 +94,13 @@
 
 ## ハンドオフ
 
-セッションをまたぐ場合は、次を `.agentops/handoffs/` または `.agentops/prompts/` に残す。
+セッションをまたぐ場合は、状況に応じて以下を残す。
+
+- 進行中・blocked の作業は `.agentops/tasks/*.md` を最新化する。これが次セッションの入口になる。
+- planで考えたtaskの範囲を超えた持ち越し（別planへの申し送り、長期 blocker、計画外で発生した観察事項など）は `.agentops/handoffs/` に残す。**PR単位の進捗には使わない**。
+- 次セッション投入プロンプトは `.agentops/prompts/next-session.md` に置く。参照先は動的に決める: `tasks/` に未完了があればtasksベース、なければ `handoffs/` ベース、両方なければ生成しない（既存ファイルがあれば削除する）。
+
+`handoffs/` または `prompts/next-session.md` に残す場合の必須項目:
 
 - 今回完了したこと
 - 未完了のこと
@@ -94,6 +109,8 @@
 - 実行したテスト
 - 未解決リスク
 - 次セッションへ投入するプロンプト
+
+完了 handoff は対応する `.agentops/archive/<plan-id>/handoffs/` へ移し、`handoffs/` 直下は進行中の引き継ぎだけにする。
 
 ## クロスモデル委譲
 
