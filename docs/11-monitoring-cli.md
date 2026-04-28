@@ -32,7 +32,7 @@ scripts/agentops-watch notify --projects config/projects.yml
 - `origin/{default_branch}` との ahead / behind
 - `.agentops/runs/` の stuck run
 - `.agentops/tasks/*.md` の未完了タスク数。完了済みtaskは `.agentops/archive/<plan-id>/tasks/` に移す
-- `.agentops/handoffs/` の引き継ぎ数
+- `.agentops/handoffs/` のハンドオフ数
 - `freshness-sources.yml` の `last_checked` と `max_age_days`
 - Discord webhook への digest 送信
 

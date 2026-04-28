@@ -16,7 +16,7 @@
 | `.agentops/task-plans/current.md` | 今回セッション実行計画（親plan・フェーズ・時間予測） | セッション |
 | `.agentops/tasks/*.md` | plan内の作業単位（PR単位など）。新作業は次番号ファイルに追記。完了済みは `.agentops/archive/<plan-id>/tasks/` へ移す | 中 |
 | `.agentops/reviews/` | レビュー結果（P0/P1/P2/P3 分類） | 各レビュー |
-| `.agentops/runs/` | クロスモデル委譲の実行記録（ISO8601 timestamp + CLI 名） | 各実行 |
+| `.agentops/runs/` | cross-model 委譲の実行記録（ISO8601 timestamp + CLI 名） | 各実行 |
 | `.agentops/handoffs/` | **planで考えたtaskの範囲を超えた持ち越しのみ**（別planへの申し送り、長期 blocker、計画外で発生した観察事項など）。PR単位の進捗には使わない | planを跨ぐ |
 | `.agentops/prompts/next-session.md` | 次セッション投入プロンプト。動的に参照先を決める: `tasks/` に未完了があればtasksベース、なければ `handoffs/` ベース、両方なければ生成しない（既存ファイルがあれば削除） | エントリポイント |
 | `.agentops/archive/<plan-id>/` | 完了、中止、置き換え済みのplan/task-plan/task/reviews/handoffs。`archive/README.md` を完了plan時系列インデックスとして運用 | plan単位 |
@@ -84,7 +84,7 @@
 
 ## セッション分割条件
 
-次のいずれかに該当した場合、1セッションで完了させず、引き継ぎを作成する。
+次のいずれかに該当した場合、1セッションで完了させず、ハンドオフを作成する。
 
 - 変更範囲が当初設計を超えた
 - レビュー修正が2周を超える
@@ -110,13 +110,13 @@
 - 未解決リスク
 - 次セッションへ投入するプロンプト
 
-完了 handoff は対応する `.agentops/archive/<plan-id>/handoffs/` へ移し、`handoffs/` 直下は進行中の引き継ぎだけにする。
+完了 handoff は対応する `.agentops/archive/<plan-id>/handoffs/` へ移し、`handoffs/` 直下は進行中のハンドオフだけにする。
 
-## クロスモデル委譲
+## cross-model 委譲
 
 Claude Code と Codex は、相互に CLI Wrapper 経由で別モデルをサブエージェントとして使う。
 
-cross-review / cross-model review は、特定モデルを固定する運用ではない。現在の主エージェントとは別系列、別 CLI、別モデルファミリーの frontier reviewer を入れ、同じ設計や差分を別の推論系で確認するための思想である。Codex 主体なら Claude Code / Anthropic 系、Claude Code 主体なら Codex / OpenAI 系が候補になりうる。実際の model id は、対象 CLI の現在仕様と公式 docs を確認してから指定する。
+cross-review / cross-model review は、特定モデルを固定する運用ではない。現在の主 orchestrator とは別系列、別 CLI、別モデルファミリーの frontier reviewer を入れ、同じ設計や差分を別の推論系で確認するための思想である。Codex 主体なら Claude Code / Anthropic 系、Claude Code 主体なら Codex / OpenAI 系が候補になりうる。実際の model id は、対象 CLI の現在仕様と公式 docs を確認してから指定する。
 
 cross-review は高リスク設計だけに限定しない。新規機能追加、リファクタリング、依存追加、API 契約変更、デプロイ影響、レビュー指摘の修正後にも検討する。ただし全変更で必須にはせず、影響範囲、コスト、レイテンシ、既存検証の強さを見てオーケストレーターが採否を判断する。
 

@@ -54,7 +54,7 @@
 - MCP は server 設定、tool approval、parallel tool call の安全性、secret 管理、削除手順まで確認する。
 - hooks は Codex の現在仕様、設定場所、sandbox / approval との関係、失敗時挙動、ログ出力を確認する。
 - skills は user / project / plugin の置き場、読み込み条件、実行環境、supporting files の扱いを確認する。
-- subagents は設定場所、tool 権限、delegation と workspace 共有条件、メインエージェントの統合責任を確認する。
+- subagents は設定場所、tool 権限、delegation と workspace 共有条件、主 orchestrator の統合責任を確認する。
 - sandbox / approval は `sandbox_mode`、workspace-write の writable roots / network、承認 policy、untrusted repository での挙動を確認する。
 - Codex CLI の version switch、再インストール、plugin / skill / config 変更後は、古い `codex app-server` が残っていないか確認し、必要なら Codex Desktop / CLI / app-server を再起動する。
 - 反映後は実際に Codex を起動し、グローバル指示、MCP、hooks、skills、subagents、sandbox / approval が読み込まれていることを検証する。
@@ -95,13 +95,13 @@
 - レビュー修正は最大 2 周までにする。3 周目が必要なら統合判断を行い、ユーザー確認または次セッション分割を行う。
 - レビュー後に修正した場合は、必ず再レビューする。作業の最後は修正ではなく、最終レビュー結果の確認で終える。
 
-## クロスモデル委譲
+## cross-model 委譲
 
-- Codex 主体の cross-review では、主エージェントと別系列の Claude Code / Anthropic 系 frontier reviewer を候補にする。
+- Codex 主体の cross-review では、主 orchestrator と別系列の Claude Code / Anthropic 系 frontier reviewer を候補にする。
 - Claude Code へ委譲する場合は、原則として共通 CLI Wrapper を使う。
 - 委譲依頼、進捗、stdout/stderr、結果は `.agentops/runs/` に残す。
 - 実 model id は固定せず、使用直前に公式 docs と現在の CLI 仕様で確認する。
-- 委譲先の所見は参考情報であり、採否、修正範囲、延期、統合判断はメインエージェントが持つ。
+- 委譲先の所見は参考情報であり、採否、修正範囲、延期、統合判断は主 orchestrator が持つ。
 
 例:
 
@@ -109,7 +109,7 @@
 agentops delegate --to claude --role architect_frontier --model <claude-model-id> --effort xhigh --input .agentops/plans/current.md
 ```
 
-## セッション引き継ぎ
+## セッションハンドオフ
 
 1 セッションで終わらない場合は、次を `.agentops/handoffs/` または `.agentops/prompts/` に残す。
 

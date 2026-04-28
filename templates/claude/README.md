@@ -21,4 +21,4 @@ Claude Code のグローバル設定、Skill、subagent を生成するための
 - `CLAUDE.md` には安定した作業思想だけを置く。
 - 長い手順は Skill や command に分ける。
 - Skill の `description` は、何をするか、いつ使うかを明確にする。
-- subagent は役割、tool 権限、成果物、メインエージェントの統合責任を明確にする。
+- subagent は役割、tool 権限、成果物、主 orchestrator の統合責任を明確にする。
