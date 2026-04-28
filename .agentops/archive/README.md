@@ -6,6 +6,7 @@
 
 | 完了日 | plan-id | サマリ |
 |---|---|---|
+| 2026-04-28 | [agentops-followup-after-global-review](2026-04-28-agentops-followup-after-global-review/plan.md) | 直前の `~/.claude` グローバル設定見直し（`*_frontier` Codex 候補で gpt-5.5 系採用、軽量 3 ロールの Claude 候補で claude-sonnet-4-6 系 baseline 化、hook の event 別分散）を agentops 雛形側に「採用例 (advisory)」「設計方針メモ (参考)」として反映。あわせて PR #24 残 P2（AGENTS.md ↔ CLAUDE.md 対称リンク）と PR #25 残 P3（用語統一: 主 orchestrator / cross-model / ハンドオフ）を整理 |
 | 2026-04-28 | [agentops-logging-flow-reflection](2026-04-28-agentops-logging-flow-reflection/plan.md) | グローバル側で確立した `.agentops/` 運用ルール階層化（plans / tasks / handoffs / next-session.md の責務分離、commit 前 archive 移動、archive/README.md 時系列インデックス化）を `docs/02-workflow.md` と各 README に反映 |
 | 2026-04-28 | [agentops-claude-md](2026-04-28-agentops-claude-md/) | agentops リポジトリ用 Claude Code 向けプロジェクト指示 `CLAUDE.md` を追加。ルート `AGENTS.md` (Codex 向け) と章立てを揃える（PR #24） |
 | 2026-04-28 | [result-md-fence-hardening](2026-04-28-result-md-fence-hardening/) | `tools/agentops_cli` の `result.md` で stdout/stderr に含まれる連続 backtick より長い fence を選び、Markdown 表示崩れを防ぐ（PR #23） |
