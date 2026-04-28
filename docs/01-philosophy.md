@@ -1,5 +1,7 @@
 # 設計思想
 
+> 用語は [docs/00-glossary.md](./00-glossary.md) を参照。
+
 このプロジェクトは、Claude Code / Codex のグローバル設定を設計・見直すときに参照する、AIエージェント運用の設計思想と判断材料を管理する。
 
 agentops 自体は、グローバル設定時の参照キットである。ここに置く `rules/`、`skills/`、`workflows/` は完成品集ではなく、各 CLI の実仕様とユーザー環境を確認したうえで採否を判断する候補カタログである。実際の Claude Code / Codex 用設定、Skill、subagent、workflow は、`templates/` と公式 docs を入力にして生成する。
