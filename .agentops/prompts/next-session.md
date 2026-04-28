@@ -1,7 +1,7 @@
 # Next session プロンプト（2026-04-28 設計レビュー実装フェーズ）
 
 parent_plan: 2026-04-28-design-review-p0-p1
-status: in progress (task 01 P0-02 完了 / 残り 8 task)
+status: in progress (task 01 + 07 完了 / 残り 7 task)
 created_at: 2026-04-28
 updated_at: 2026-04-28
 timezone: Asia/Tokyo
