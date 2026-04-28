@@ -120,7 +120,7 @@ PR #41: docs/01-philosophy.md (1 行 +/-), docs/02-workflow.md (+2), docs/09-hoo
 - **task 09 (P1-08)**: `@AGENTS.md` import が Claude Code / Codex 両方で確実に動作するか着手前に再確認必要（公式仕様変化が速い、AAIF 設立 2025-12-09 以降の仕様改訂に追従）
 - **task 08 (P1-07)**: GitHub Actions が無料枠を超えないか着手時確認（public リポジトリなら問題なし）
 - **task 04 / task 06 の順序依存**: task 04 を先にすると task 06 で新設される `docs/17` の frontmatter が漏れるため、task 06 のチェックリストに「frontmatter 追加」を含める運用が必要。`06 → 04` 順なら task 04 が docs/17 を含めてカバー（task 03 / 05 セッションで明文化）
-- **task 05 で発覚した DbC prose 残存**: `docs/10-cli-wrapper.md` (4 件) と `docs/11-monitoring-cli.md` (8 件) にも `前提条件:` / `不変条件:` / `完了条件:` / `停止条件:` prose が残っている（CLI 仕様の DbC 適用節）。task 05 スコープ外として未着手。次 plan の handoff 候補として handoffs/ へ残すか、別 task として起票するか plan 全体完了時に判断
+- **task 05 で発覚した DbC prose 残存（docs/10, docs/11）**: handoff として独立記録済み → `.agentops/handoffs/2026-04-28-dbc-prose-remnants-docs-10-11.md`。本 plan (`2026-04-28-design-review-p0-p1`) 完了後の新 plan で task 化を判断。次 plan 着手時はこの handoff から優先度を判断する
 - **archive task CLI が next-session.md 本文を更新しない既知制約**: 責務分離のため意図的だが、結果として「本文の手動書き直し」が運用に必須。次 plan で運用ルール化 / CLI 拡張 / 別 session-log CLI 新設のいずれかを採用するか議論候補（task 07 から継続、task 02 / 03 / 05 でも踏襲）
 - **archive task で git add 漏れ**: CLI は `git mv` で task md を staged にするが、`next-session.md` は通常 write のため unstaged のまま残る（PR #32 で発覚、task 02 / 03 / 05 で再現）。次 plan で CLI 側に `git add` を追加する hardening 候補
 - **archive task CLI の P2 残課題**: `completed_tasks: []` がファイル末尾改行なしで終わる極端ケースで unsupported 扱い（task 07 Round 3 P2、実害は表示と実体の整合性が保たれているため軽微、次 plan で 1 行 regex hardening 候補）
