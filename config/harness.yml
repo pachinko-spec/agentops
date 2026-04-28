@@ -32,6 +32,19 @@ usage_policy:
     - secret や本番データを扱わないと再現できない
 
 defaults:
+  stop_conditions:
+    # docs/03-dbc-and-quality-gates.md の「停止条件 / tool 実行層」と対応する spec。
+    # 監視 CLI 側で実際に読む実装は別 plan の handoff 対象（task 01 範囲外）。
+    # 値はプロジェクト側の .agentops/harness.yml で上書き可。
+    # 後段の task_template.stop_conditions（人間判断条件）とは別レイヤで、
+    # 監視 CLI 実装時は「defaults.stop_conditions.tool_layer は全 run に継承される基底値、
+    # task_template.stop_conditions は task 個別の追加条件」として merge する想定。
+    tool_layer:
+      max_tool_calls: 200          # 単一 agent run でのツール呼び出し上限
+      no_progress_steps: 10        # N ステップ進捗無しで halt（cordum.io / meganova.ai layered defense）
+      circuit_breaker_cycle_threshold: 3  # 同一サイクル 3 回検知で halt
+      cost_cap_usd_per_session: 20  # USD 単位の停止上限（支出許可ではない、超過時に halt）。プロジェクト側で上書き可
+
   branch_policy:
     protected_branches:
       - main
