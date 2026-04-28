@@ -4,11 +4,15 @@
 
 各プロジェクトでは、プロジェクトローカルの `.agentops/tasks/` を優先します。
 
+## 粒度と命名
+
+各 `tasks/*.md` は plan 内の作業単位（PR 単位など）を表します。新しい作業は次番号ファイル（例: `tasks-01-...`、`tasks-02-...`）として追記します。1 つのファイルに複数の独立作業を詰めません。
+
 ## 監視CLIとの関係
 
 `agentops-watch` は、`README.md` 以外の `.agentops/tasks/*.md` を未完了タスク数として数えます。
 
-そのため、完了したtaskをこのディレクトリ直下に残してはいけません。完了、中止、置き換え済みのtaskは、対応する `.agentops/archive/<plan-id>/tasks/` へ移します。
+そのため、完了したtaskをこのディレクトリ直下に残してはいけません。完了、中止、置き換え済みのtaskは、**commit 前**に対応する `.agentops/archive/<plan-id>/tasks/` へ移します。これにより、commit 時点で監視 CLI の未完了カウントと実態が一致します。
 
 ## taskの必須項目
 
