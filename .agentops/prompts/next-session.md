@@ -8,6 +8,7 @@ timezone: Asia/Tokyo
 entry_point: .agentops/tasks/02-p1-01-glossary.md
 completed_tasks:
   - 01-p0-02-tool-stop-conditions (PR 未確定 / archive 済)
+  - 07-p1-06-archive-auto-update
 
 ---
 
