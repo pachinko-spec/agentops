@@ -1,76 +1,90 @@
-# task-plan: 横断設計レビュー P0+P1 実装フェーズ雛形
+# task-plan: task 02 (P1-01) 用語統一表 docs/00-glossary.md 実装セッション
 
-> 親 plan: `2026-04-28-design-review-p0-p1` (`.agentops/plans/current.md`)  
-> 現在の状態: **計画立案フェーズ完了 / 実装フェーズ未開始**  
+> 親 plan: `2026-04-28-design-review-p0-p1` (`.agentops/plans/current.md`)
+> 対象 task: `.agentops/tasks/02-p1-01-glossary.md`
+> 現在の状態: **PR A (cleanup) 進行中 → PR B (P1-01 本体) → PR C (archive dogfood)**
 > 起票: 2026-04-28 (Asia/Tokyo)
+> Plan agent 詳細: `~/.claude/plans/agentops-agentops-tasks-02-p1-01-glossar-linked-naur.md`
 
 ---
 
 ## 1. 今セッションのスコープ（2026-04-28）
 
-- ブランチ `claude/design-review-2026-04-28` で計画立案のみ実施。
-- 実装ファイルは一切変更しない。`docs/reviews/2026-04-28-cross-repo-design-review.md` と `docs/01–16` も読み取り専用。
-- 出力:
-  - `~/.claude/plans/2026-04-28-design-review-p0-p1.md`（Plan agent の詳細計画）
-  - `.agentops/plans/current.md`（親 plan）
-  - `.agentops/task-plans/current.md`（このファイル）
-  - `.agentops/tasks/01-09-*.md`（DbC 入りの task ファイル 9 件）
-- 計画全体を Codex に cross-review 委譲し、所見を反映してユーザーへ提示。承認後に実装フェーズへ移行。
+PR を 3 本に分けて scope 単一性を担保する。
 
-## 2. 次セッション（実装フェーズ）の起動手順
+| PR | branch | 内容 | merge 方式 |
+|---|---|---|---|
+| A | `claude/cleanup-stale-task-plan-2026-04-28` | 残置した planning-phase 版 task-plan を archive へ退避 + 現セッション用 `current.md` を新規作成 | self-merge（Codex 省略可、`.agentops/` housekeeping） |
+| B | `claude/design-review-impl-p1-01` | task 02 本体実装。docs/00-glossary.md 新規 + docs/01 双方向リンク + 用語ゆれを許容語付き 0 件化 | AI auto-merge（許諾 6 件 OK 時） |
+| C | `claude/archive-task-02-dogfood` | task 02 を archive へ移動 + `prompts/next-session.md` 本文書き直し | self-merge（Codex 省略可、`.agentops/` housekeeping） |
 
-1. `git checkout main && git pull --ff-only origin main` で main を最新化。
-2. `git checkout -b claude/design-review-impl-p0-p1` で実装ブランチを切る。
-3. `.agentops/tasks/` 配下の最小番号 task（`01-p0-02-*.md`）から着手。
-4. task ごとに以下のフェーズを 1 PR で完結させる。
-   - 実装 → 自己レビュー → `python3 -m compileall tools` 等の検証 → Codex cross-review (`scripts/agentops delegate --to codex --role review_frontier --effort high --input <ファイル>`) → 所見を P0/P1/P2/P3 で分類して P0/P1 を反映 → PR 作成 → main マージ。
-   - PR タイトルは `<task-id>: <短縮タイトル>` 形式（例: `P0-02: tool 実行層停止条件を docs/03 + harness.yml に追加`）。
-   - PR 本文に DbC（前提・不変・完了・禁止・停止）、検証コマンド、未解決リスクを記載。
-5. PR が main に取り込まれたら、**commit 前**（次 PR 作業開始時）に当該 task ファイルを `.agentops/archive/2026-04-28-design-review-p0-p1/tasks/` へ移し、`prompts/next-session.md` を最新化。
-6. 9 task すべてマージ後、plan / task-plan / tasks / reviews / runs を `.agentops/archive/2026-04-28-design-review-p0-p1/` 配下へまとめて移し、`.agentops/archive/README.md` にサマリ行を追記。
+各 PR は単独でマージ可能な完結状態。PR 間の依存は A → B → C 順序のみで、内容的には独立。
 
-## 3. PR 単位の実行順（依存順）
+## 2. 起動手順（既に PR A 着手中、参考）
 
-| 順 | task | ブランチ案 | 想定コスト | 依存 |
-|---|---|---|---|---|
-| 1 | `01-p0-02-tool-stop-conditions.md` | `claude/design-review-impl-p0-02` | M（1 日） | なし |
-| 2 | `02-p1-01-glossary.md` | `claude/design-review-impl-p1-01` | S（2h） | 01 |
-| 3 | `03-p1-02-deprecation-marker.md` | `claude/design-review-impl-p1-02` | S（30m） | なし（02 / 07 と並行 PR 可） |
-| 4 | `04-p1-04-last-reviewed.md` | `claude/design-review-impl-p1-04` | S（1h） | 02 |
-| 5 | `05-p1-05-dbc-consolidation.md` | `claude/design-review-impl-p1-05` | S（1h） | 02 |
-| 6 | `06-p1-03-cross-reference.md` | `claude/design-review-impl-p1-03` | M（半日） | 02 |
-| 7 | `07-p1-06-archive-auto-update.md` | `claude/design-review-impl-p1-06` | M（半日） | なし（03 と並行 PR 可） |
-| 8 | `08-p1-07-ci-and-gitignore.md` | `claude/design-review-impl-p1-07` | S–M（半日） | 04 |
-| 9 | `09-p1-08-agents-md-unify.md` | `claude/design-review-impl-p1-08` | M（半日） | 02, 04, 05, 06 |
+1. `git status --short --branch` で main + clean を確認、`git fetch origin && git pull --ff-only origin main` で同期。
+2. `git checkout -b claude/cleanup-stale-task-plan-2026-04-28` で PR A ブランチを切る。
+3. `git mv .agentops/task-plans/current.md .agentops/archive/2026-04-28-design-review-p0-p1/task-plans/initial-planning-phase.md`。
+4. 本ファイル（task 02 セッション用 `task-plans/current.md`）を新規作成。
+5. commit / push / PR 作成 / 許諾条件 6 件評価 / self-merge / main 同期確認。
+6. PR B ブランチ `claude/design-review-impl-p1-01` を main から切り直し、task 02 本体実装。
+7. PR B merge 後、PR C ブランチ `claude/archive-task-02-dogfood` で archive task CLI を回し、`next-session.md` 本文を書き直し。
 
-合計 9 PR、4–5 日想定。
+## 3. PR B 実行内容（task 02 DbC ベース、Plan agent §Approach §PR B 参照）
 
-**並行 PR 候補**（依存なし、別ブランチで並走可）:
-- task 03 (P1-02) ↔ task 07 (P1-06): 完全独立。
-- task 03 (P1-02) は task 02 とも依存無しのため並行可（ただし PR レビューを 1 名で回すなら逐次でもよい）。
+1. `docs/00-glossary.md` 新規作成（19 用語 + 出典 + 許容語リスト）。報告書 Appendix B (`docs/reviews/2026-04-28-cross-repo-design-review.md` L451–) を出発点。
+2. `docs/01-philosophy.md` 冒頭に glossary リンク + glossary 側に逆リンク（双方向）。
+3. リポジトリ全体の `rg` で用語ゆれを統一（synonym 統一に限る、意味変更なし）。
+   - `orchestrator` → 文脈が決定権者なら `主 orchestrator`、ロール名なら `orchestrator_frontier`。
+   - `cross-review`（行為）と `cross-model-delegate`（CLI ラッパ）を使い分け。
+   - `harness` / `harness spec` / `harness engineering` を docs/12 用語表（L43–48）に揃える。
+4. **触らない**: `docs/reviews/`、`archive/`、`.agentops/archive/`、`.agentops/`、`tools/`、`scripts/`。
+5. 検証コマンド（PR 本文に転記）:
+   - `rg -n "orchestrator" docs/ config/ rules/ skills/ workflows/ CLAUDE.md AGENTS.md | rg -v "orchestrator_frontier|主 orchestrator|orchestrator role|orchestrators|docs/00-glossary.md"` が **0 件**。
+   - `rg -n "cross-review|cross-model-delegate" docs/ config/ skills/ workflows/ CLAUDE.md AGENTS.md` が許容語と整合。
+   - `rg -n "\bharness\b|harness spec|harness engineering" docs/12-harness-engineering.md docs/03-dbc-and-quality-gates.md` が docs/12 用語表と整合。
+   - `python3 -m compileall tools` exit 0。
 
-実装フェーズで並行する場合も、各 PR は単独でマージ可能な完結状態を保つこと（共通ファイルへの編集は最小化）。
+## 4. クロスレビュー運用（PR B のみ、task 共通）
 
-## 4. クロスレビュー運用（毎 task 共通）
+- **Round 1**: `scripts/agentops delegate --to codex --role review_frontier --effort high --input docs/00-glossary.md`。所見を `.agentops/reviews/p1-01.md` に Round 1 として転記、P0/P1/P2/P3 分類。run 記録は `.agentops/runs/<ISO8601>-p1-01/`。
+- **Round 2**: P0/P1 反映後に再委譲、`.agentops/reviews/p1-01.md` に Round 2 として追記。
+- **Round 3**（**必須・確認用**）: 修正がなくても確認専用で実行し、no further P0/P1 を確認して `.agentops/reviews/p1-01.md` に Round 3 として追記。**前回 task 07 セッションで Round 2 後にレビュー無し merge した違反を再発させない**。
+- レビュー修正は最大 2 周。3 周目は確認のみ。3 周目で修正必要なら統合判断 or user 確認。
 
-- `scripts/agentops delegate --to codex --role review_frontier --effort high --input <該当ファイル>` を実行。
-- 結果は `.agentops/runs/<timestamp>-<task-id>/{request.md,status.json,result.md,stdout.log,stderr.log}` に保存（secret は記録禁止）。
-- Codex 所見を `.agentops/reviews/<task-id>.md` に書き出し、P0/P1/P2/P3 分類。P0/P1 は必修反映、P2 は採否判断、P3 は単独でループ継続しない。
-- レビュー修正は最大 2 周。3 周目が必要なら統合判断またはユーザー確認。
+## 5. AI auto-merge 許諾条件（PR B、CLAUDE.md L51 §許諾条件 6 件）
 
-## 5. 共通停止条件
+1. **DbC 完了**: task 02 ファイルの完了条件節すべて満たす（許容語付き 0 件、双方向リンク、Codex 反映、PR マージ）。
+2. **Codex cross-review 通過**: Round 3 で P0/P1 = 0、run 記録 `.agentops/runs/<ISO8601>-p1-01/` あり。
+3. **CI green**: `.github/` 不在のため `python3 -m compileall tools` exit 0 で代替（task 08 完了前の暫定運用）。
+4. **観察事実食い違いなし**: Appendix B / docs/12 用語表との整合確認。
+5. **PR スコープ単一**: docs / config / rules / skills / workflows / catalog.md / CLAUDE.md / AGENTS.md / templates/ のみ。`.agentops/` には触れない（PR A/C で別途）。
+6. **secret 未混入**: diff 目視確認。
 
-- 観察事実と現状に新たな食い違いが見つかった。
-- レビュー修正 2 周超え。
-- secret / 本番 / 課金 / 外部公開 / 破壊的操作が必要。
-- task の所要時間が想定の 2 倍を超える。
-- AAIF / Claude Code / Codex の公式仕様変更が plan 前提を覆す。
+PR A / C は `.agentops/` 限定 housekeeping のため、本許諾条件 §2 の対象（task DbC 直接 PR）外として Codex cross-review 省略可。
 
-## 6. 本セッションの最後にユーザーへ提示する内容
+## 6. 共通停止条件
 
-1. PR #27 マージ確認結果（済み）。
-2. 報告書観察事実と現状の整合確認結果（済み・全件一致）。
-3. 計画全体の構造（plan / task-plans / tasks ファイル一覧）。
-4. Codex cross-review の所見と反映内容。
-5. 次セッションでの実装フェーズ起動手順。
-6. ユーザー承認待ちであること。
+- task 02 ファイル §停止条件（公式 docs と用語食い違い、置換対象想定 3 倍超え、レビュー修正 2 周超え）に該当 → 即停止 user 確認。
+- Codex Round 1 で P0 が出た場合 → 反映後 Round 2、それでも P0/P1 残るなら user 確認。
+- archive task CLI が想定外エラー（dry-run で検出）→ task 07 review p1-06.md P2 残課題（`completed_tasks: []` 末尾改行なし極端ケース）に該当しないか確認、該当時は手動編集。
+- secret / 本番 / 課金 / 外部公開 / 破壊的操作（git reset --hard、force push、main 直 push）が必要 → 停止。
+- AI auto-merge 許諾条件 6 件のいずれかが NG → 停止 user 確認。
+- レビュー修正 3 周目に入りそうな場合 → 統合判断 or user 確認。
+
+## 7. 後処理（PR C 完了後、CLAUDE.md auto-merge 後の必須手順）
+
+1. `git checkout main && git fetch origin && git pull --ff-only origin main && git status --short --branch` で main 同期確認。
+2. `prompts/next-session.md` の本文を task 02 セッション内容で書き直し済みか再確認（PR C 内で実施）。
+3. plan 全体完了でないため、`scripts/agentops archive plan` は **不実行**（task 03–06, 08, 09 が残）。
+
+## 8. 関連ファイル
+
+- 親 plan: `.agentops/plans/current.md`
+- 着手 task: `.agentops/tasks/02-p1-01-glossary.md`
+- 報告書 Appendix B: `docs/reviews/2026-04-28-cross-repo-design-review.md` L451–
+- 用語表ソース: `docs/12-harness-engineering.md` L43–48
+- 前 task 07 review（Round 3 運用例）: `.agentops/reviews/p1-06.md`
+- archive CLI 仕様: `docs/11-monitoring-cli.md` §archive サブコマンド
+- Plan agent 詳細: `~/.claude/plans/agentops-agentops-tasks-02-p1-01-glossar-linked-naur.md`（リポジトリ外）
+- planning-phase 版（archive 済み）: `.agentops/archive/2026-04-28-design-review-p0-p1/task-plans/initial-planning-phase.md`
