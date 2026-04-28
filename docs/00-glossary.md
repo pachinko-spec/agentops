@@ -29,7 +29,7 @@ rg -n "orchestrator" docs/ config/ rules/ skills/ workflows/ CLAUDE.md AGENTS.md
 ## 業界・学術用語
 
 - **ACI (Agent-Computer Interface)**: AI エージェントが触る CLI / ファイル / ログ / 状態を設計対象とする概念。SWE-agent (NeurIPS 2024, arXiv:2405.15793) が発祥。内部参照: [docs/01-philosophy.md](./01-philosophy.md), [docs/12-harness-engineering.md](./12-harness-engineering.md)。
-- **AAIF (Agentic AI Foundation)**: 2025-12-09 に OpenAI / Anthropic が AGENTS.md を寄贈して設立した Linux Foundation 配下の組織。出典: [agents.md](https://agents.md/)。
+- **AAIF (Agentic AI Foundation)**: 2025-12-09 に Linux Foundation 配下で設立された組織。OpenAI が AGENTS.md を、Anthropic が MCP（Model Context Protocol）を、Block が Goose をそれぞれ寄贈して founding contribution に加えた。出典: [AAIF launch announcement (Linux Foundation)](https://aaif.io/press/linux-foundation-announces-the-formation-of-the-agentic-ai-foundation-aaif-anchored-by-new-project-contributions-including-model-context-protocol-mcp-goose-and-agents-md/), [agents.md](https://agents.md/)。
 - **ABC (Agent Behavioral Contracts)**: AI エージェント契約形式（6-tuple + (p, δ, k)-satisfaction）。出典: arXiv:2602.22302（一次性が弱いため、本リポジトリの停止条件閾値根拠は参考扱い）。
 - **DbC (Design by Contract)**: Bertrand Meyer 由来の契約プログラミング概念。本リポジトリでは前提・不変・完了・禁止・停止の 5 条件として運用。内部参照: [docs/03-dbc-and-quality-gates.md](./03-dbc-and-quality-gates.md)。
 - **freshness audit**: 公式 docs / GitHub / release notes / package registry / security advisory を AI 記憶より優先する確認運用。内部参照: [docs/06-freshness-and-monitoring.md](./06-freshness-and-monitoring.md)。
@@ -42,9 +42,9 @@ rg -n "orchestrator" docs/ config/ rules/ skills/ workflows/ CLAUDE.md AGENTS.md
 
 ## 役割・運用名
 
-- **orchestrator (主 orchestrator / orchestrator_frontier)**: 決定権を持つ主モデル。日本語で言及するときは `主 orchestrator`、`config/model-catalog.yml` のロール名としては `orchestrator_frontier`、複数形は `orchestrators`。agentops では Claude Code (`claude-opus-4-7`) または Codex (GPT-5.5 系) のいずれかが想定既定。内部参照: [docs/04-model-routing.md](./04-model-routing.md), [docs/05-review-policy.md](./05-review-policy.md)。
+- **orchestrator (主 orchestrator / orchestrator_frontier)**: 決定権を持つ主モデル。日本語で言及するときは `主 orchestrator`、`config/model-catalog.yml` のロール名としては `orchestrator_frontier`、複数形は `orchestrators`。agentops では Claude Code / Anthropic 系 frontier reasoning model または Codex / OpenAI 系 frontier reasoning model のいずれかが候補。実 model id は固定せず、使用直前に公式 docs と CLI の現在仕様で確認する（`config/model-catalog.yml` の `model_id: null` 方針に整合）。内部参照: [docs/04-model-routing.md](./04-model-routing.md), [docs/05-review-policy.md](./05-review-policy.md)。
 - **cross-review**: 主 orchestrator とは別系列・別 CLI・別モデルファミリーの `review_frontier` で設計や差分を確認するレビュー方式（行為・運用名）。所見の採否・修正範囲・延期・統合判断は主 orchestrator が持つ。内部参照: [docs/05-review-policy.md](./05-review-policy.md), [docs/04-model-routing.md](./04-model-routing.md) §cross-review の選び方。
-- **cross-model-delegate**: cross-review を起動する CLI ラッパ名。実体は `scripts/agentops delegate --to <別系列> --role review_frontier --effort high --input <ファイル>` で、run 記録を `.agentops/runs/<ISO8601>-<task-id>/` へ保存する。内部参照: [docs/10-cli-wrapper.md](./10-cli-wrapper.md)。
+- **cross-model-delegate**: cross-review を起動する CLI ラッパ名。実体は `scripts/agentops delegate --to <別系列> --role review_frontier --effort high --input <ファイル>` で、run 記録は `.agentops/runs/<run_id>/` 配下に保存される。`run_id` は `--run-id` で明示しない場合 `<JST タイムスタンプ>-<to>-<role>` 形式（`%Y%m%dT%H%M%S+0900-<to>-<role>`、実装は `tools/agentops_cli/__main__.py:339` 周辺）。内部参照: [docs/10-cli-wrapper.md](./10-cli-wrapper.md)。
 
 ## ツール / プロトコル
 
