@@ -17,7 +17,7 @@ agentops リポジトリで使う中核用語の定義表。docs / config / rule
 - **cross-review / cross-model-delegate**: `cross-review` は **行為・運用名**、`cross-model-delegate` は cross-review を起動する **CLI ラッパ名**（`scripts/agentops delegate`）。両者は同義ではないので置換しない。
 - **harness 系**: `harness` 単独使用は OK。`harness spec` は task 単位の harness 契約、`harness engineering` は harness 自体を設計・保守・検証する分野。文脈に応じて使い分け、`docs/12-harness-engineering.md` 用語表（L43–48）に揃える。
 
-検証コマンド（task 02 / P1-01 の DbC §検証）:
+検証コマンド（task 02 / P1-01 の DbC §検証、**orchestrator 系の検証**）:
 
 ```sh
 rg -n "orchestrator" docs/ config/ rules/ skills/ workflows/ CLAUDE.md AGENTS.md \
@@ -25,6 +25,22 @@ rg -n "orchestrator" docs/ config/ rules/ skills/ workflows/ CLAUDE.md AGENTS.md
 ```
 
 → 0 件であること（許容語付き 0 件、完全 0 件は求めない）。
+
+**cross-review / cross-model-delegate の使い分け確認**（同義置換が混入していないか目視）:
+
+```sh
+rg -n "cross-review|cross-model-delegate" docs/ config/ skills/ workflows/ CLAUDE.md AGENTS.md
+```
+
+→ `cross-review` は行為 / 運用名、`cross-model-delegate` は CLI ラッパ名（`scripts/agentops delegate`）として一貫使用されていることを目視確認。
+
+**harness 系の使い分け確認**（`docs/12-harness-engineering.md` 用語表 L43–48 と整合しているか目視）:
+
+```sh
+rg -n "\bharness\b|harness spec|harness engineering" docs/12-harness-engineering.md docs/03-dbc-and-quality-gates.md
+```
+
+→ `harness` / `harness spec` / `harness engineering` が文脈ごとに正しく使い分けられていることを目視確認。
 
 ## 業界・学術用語
 
@@ -48,10 +64,10 @@ rg -n "orchestrator" docs/ config/ rules/ skills/ workflows/ CLAUDE.md AGENTS.md
 
 ## ツール / プロトコル
 
-- **MCP (Model Context Protocol)**: Anthropic 主導の tool / context 連携プロトコル。`http` 推奨、`sse` deprecated（2025-12 時点）。出典: [modelcontextprotocol.io](https://modelcontextprotocol.io/)。
+- **MCP (Model Context Protocol)**: Anthropic 主導の tool / context 連携プロトコル。標準 transport は `stdio` と `Streamable HTTP`（2025-06-18 spec、Streamable HTTP 内で SSE stream を使う）。旧 `HTTP+SSE transport`（2024-11-05 spec）は deprecated / replaced、後方互換のため一部実装に残る。出典: [MCP transports spec (2025-06-18)](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports), [modelcontextprotocol.io](https://modelcontextprotocol.io/)。
 - **Skills**: 2025-12 に open standard 化された agent capability 単位。`SKILL.md` + frontmatter で定義し、Claude Code / Codex 双方で参照可能。内部参照: [skills/catalog.md](../skills/catalog.md)。出典: [code.claude.com/docs/en/skills](https://code.claude.com/docs/en/skills)。
 - **Plugins**: Claude Code の機能拡張パッケージ。slash command / hooks / agents / MCP servers を 1 つの単位にまとめて配布する。出典: [code.claude.com/docs/en/plugins](https://code.claude.com/docs/en/plugins)。
-- **Auto memory**: Claude Code の自動メモリ機能。`~/.claude/projects/*/memory/MEMORY.md` を中心に user / feedback / project / reference 4 種を保存し、複数会話を跨いで参照する。出典: [code.claude.com/docs/en/memory](https://code.claude.com/docs/en/memory)。
+- **Auto memory**: Claude Code の自動メモリ機能。プロジェクトごとの `~/.claude/projects/<project>/memory/` 配下に `MEMORY.md` を entrypoint として置き、build commands / debugging insights / architecture notes などをトピック別ファイルに保存して複数会話を跨いで参照する。本リポジトリのユーザーグローバル指示では user / feedback / project / reference の 4 分類で運用しているが、これは公式 docs の規定ではなく運用ルールである。出典: [code.claude.com/docs/en/memory](https://code.claude.com/docs/en/memory)。
 
 ## 検証・テスト方針
 
