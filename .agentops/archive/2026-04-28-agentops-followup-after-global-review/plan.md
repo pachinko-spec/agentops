@@ -3,7 +3,7 @@
 - plan-id: `2026-04-28-agentops-followup-after-global-review`
 - 作業ブランチ: `claude/agentops-followup-after-global-review`
 - 開始日: 2026-04-28
-- 状態: 進行中
+- 状態: 完了 (PR #26 で archive 移動済)
 
 ## 背景
 

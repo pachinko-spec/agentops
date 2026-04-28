@@ -1,7 +1,7 @@
 # Task 01: AGENTS.md → CLAUDE.md 対称クロスリファレンス追加
 
 - 親 plan: `2026-04-28-agentops-followup-after-global-review`
-- 状態: 進行中
+- 状態: 完了 (PR #26 で archive 移動済)
 
 ## 経緯
 
