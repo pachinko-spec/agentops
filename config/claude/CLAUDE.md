@@ -54,7 +54,7 @@
 - MCP は scope、transport、OAuth、secret 管理、project shared config の承認、出力上限、削除手順まで確認する。
 - hooks は event、matcher、blocking 可否、timeout、失敗時挙動、ログ出力を確認し、成功ケースと失敗ケースを両方試す。
 - skills は user / project / plugin の置き場、frontmatter、手動起動と自動起動、tool pre-approval、現在セッションでの再読み込み条件を確認する。
-- subagents は user / project の置き場、tool 権限、MCP tool の継承、メインエージェントの統合責任を確認する。
+- subagents は user / project の置き場、tool 権限、MCP tool の継承、主 orchestrator の統合責任を確認する。
 - 反映後は `/memory`、`/config`、`/mcp` など、現在の Claude Code が提供する確認方法で読み込み状態を検証する。
 - 詳細な反映手順は `docs/16-global-settings-application-checklist.md` を参照する。
 
@@ -93,13 +93,13 @@
 - レビュー修正は最大 2 周までにする。3 周目が必要なら統合判断を行い、ユーザー確認または次セッション分割を行う。
 - レビュー後に修正した場合は、必ず再レビューする。作業の最後は修正ではなく、最終レビュー結果の確認で終える。
 
-## クロスモデル委譲
+## cross-model 委譲
 
-- Claude Code 主体の cross-review では、主エージェントと別系列の Codex / OpenAI 系 frontier reviewer を候補にする。
+- Claude Code 主体の cross-review では、主 orchestrator と別系列の Codex / OpenAI 系 frontier reviewer を候補にする。
 - Codex へ委譲する場合は、原則として共通 CLI Wrapper を使う。
 - 委譲依頼、進捗、stdout/stderr、結果は `.agentops/runs/` に残す。
 - 実 model id は固定せず、使用直前に公式 docs と現在の CLI 仕様で確認する。
-- 委譲先の所見は参考情報であり、採否、修正範囲、延期、統合判断はメインエージェントが持つ。
+- 委譲先の所見は参考情報であり、採否、修正範囲、延期、統合判断は主 orchestrator が持つ。
 
 例:
 
@@ -107,7 +107,7 @@
 agentops delegate --to codex --role review_frontier --model <codex-model-id> --effort xhigh --input .agentops/plans/current.md
 ```
 
-## セッション引き継ぎ
+## セッションハンドオフ
 
 1 セッションで終わらない場合は、次を `.agentops/handoffs/` または `.agentops/prompts/` に残す。
 

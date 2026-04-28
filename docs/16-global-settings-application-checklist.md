@@ -47,7 +47,7 @@
 - [ ] `templates/claude/`、`templates/codex/` の雛形を、公式 docs と実環境に合わせて調整した。
 - [ ] skill は短い `description`、明確な発火条件、必要最小限の supporting files にした。
 - [ ] 副作用がある skill は自動起動させず、手動起動や追加確認を前提にした。
-- [ ] subagent は役割、入力、出力、tool 権限、MCP tool 継承、メインエージェントの統合責任を明確にした。
+- [ ] subagent は役割、入力、出力、tool 権限、MCP tool 継承、主 orchestrator の統合責任を明確にした。
 - [ ] skill / subagent を追加した後、対象 CLI が現在セッションで読み込むか、再起動が必要かを確認した。
 
 ## permissions / sandbox / approval

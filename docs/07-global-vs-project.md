@@ -16,7 +16,7 @@
 - レビュー優先度とループ上限
 - 最新LTS・公式docs確認ポリシー
 - Context7 / Google Stitch など汎用 MCP の導入確認方針
-- クロスモデル委譲の基本方針
+- cross-model 委譲の基本方針
 - ドキュメント更新必須ルール
 - 曖昧な指示の扱いと、修正後に最終レビューで終える方針
 - 汎用 skill / workflow 候補、hooks 方針

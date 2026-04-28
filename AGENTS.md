@@ -2,6 +2,8 @@
 
 このファイルは `/home/otaku/agentops` リポジトリで作業する Codex 向けのプロジェクト固有指示です。グローバル設定や `config/codex/AGENTS.md` より、このリポジトリ内の作業ではこのファイルを優先します。
 
+Claude Code 向けの対応指示は同階層の `CLAUDE.md` にあります。両ファイルは章立てを揃えてあるので、片方を更新したら他方も同期してください。
+
 ## このリポジトリの位置づけ
 
 - `agentops` は Claude Code / Codex のグローバル設定、運用思想、雛形、候補カタログを保守するリポジトリです。
@@ -12,7 +14,7 @@
 
 - `/home/otaku/agentops` 内の設計、実装、docs、テンプレート、補助 script を触る作業は、プロジェクトローカルの `/home/otaku/agentops/.agentops/` に plan、task-plan、task、review、handoff、run log を残します。
 - `~/.codex/AGENTS.md`、`~/.codex/config.toml`、`~/.codex/skills/`、`~/.codex/plugins/`、`~/.codex` 配下の hooks、MCP、subagents、その他 Codex 実グローバル設定を読む、生成する、変更する、検証する作業では、`~/.codex/.agentops/` にも記録を残します。
-- 1つの作業でこのリポジトリと `~/.codex` の両方を扱う場合は、`/home/otaku/agentops/.agentops/` を主記録にし、`~/.codex/.agentops/` にはグローバル設定側の変更内容、検証結果、未解決リスク、次回引き継ぎだけを短く残します。
+- 1つの作業でこのリポジトリと `~/.codex` の両方を扱う場合は、`/home/otaku/agentops/.agentops/` を主記録にし、`~/.codex/.agentops/` にはグローバル設定側の変更内容、検証結果、未解決リスク、次回ハンドオフだけを短く残します。
 - project local の一時ファイルは `/home/otaku/agentops/.agentops/.tmp/` を使います。Codex global 側の一時ファイルは `~/.codex/.agentops/.tmp/` を使います。
 - 機密値、認証情報、環境変数ファイル、個人情報、本番データ、巨大な依存 cache は、どちらの `.agentops/` や `.agentops/.tmp/` にも保存しません。
 

@@ -38,7 +38,7 @@ Skill 名、description、tool 権限、supporting files は CLI ごとの公式
 | maintainability-review | 複雑化、重複、責務肥大をレビューする | リファクタ、PR | global |
 | performance-review | 性能劣化、無駄な I/O、bundle、query をレビューする | performance 懸念 | project |
 | dependency-supply-chain-review | 新規依存、license、supply chain をレビューする | dependency 追加 | global |
-| cross-review | 主エージェントとは別 CLI / 別モデルファミリーの frontier reviewer で確認する | 高リスク変更、新機能、リファクタ、依存追加、API 契約変更、デプロイ影響、レビュー修正後 | global |
+| cross-review | 主 orchestrator とは別 CLI / 別モデルファミリーの frontier reviewer で確認する | 高リスク変更、新機能、リファクタ、依存追加、API 契約変更、デプロイ影響、レビュー修正後 | global |
 | release-readiness-review | release 前の検証、rollback、docs を確認する | release 前 | project |
 | docs-review | README、API docs、runbook、handoff の更新漏れを確認する | docs 影響 | global |
 

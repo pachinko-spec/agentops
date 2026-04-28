@@ -23,7 +23,7 @@ selection_policy:
     - model_id が null の候補は、未確認なので実行に使わない。
   cross_review_policy:
     binding: advisory
-    description: cross-review は特定モデル固定ではなく、主エージェントと別系列の frontier reviewer を選ぶための方針です。
+    description: cross-review は特定モデル固定ではなく、主 orchestrator と別系列の frontier reviewer を選ぶための方針です。
     preferred_reviewer_difference:
       - different_target_cli
       - different_provider
@@ -94,7 +94,12 @@ roles:
         provider: openai
         model_family: frontier reasoning model
         model_id: null
-        notes: Codex CLI で利用可能な最新の高推論モデルを公式 docs で確認して設定する。
+        notes: >-
+          Codex CLI で利用可能な最新の高推論モデルを公式 docs で確認して設定する。
+          採用例 (advisory): 2026-04-28 時点でユーザーグローバル側に GPT 系の高推論モデル
+          (例: gpt-5.5 系) を採用したケースあり。
+          ChatGPT auth 限定の場合があり、API key auth 環境では下位モデルへ override される
+          ことに注意。実 model id は使用直前に公式 docs で確認する。
       - target_cli: claude
         provider: anthropic
         model_family: frontier reasoning model
@@ -109,7 +114,11 @@ roles:
         provider: openai
         model_family: frontier reasoning model
         model_id: null
-        notes: GPT 系列に固定しない。Codex CLI 側の現在の model id を確認して埋める。
+        notes: >-
+          GPT 系列に固定しない。Codex CLI 側の現在の model id を確認して埋める。
+          採用例 (advisory): 2026-04-28 時点でユーザーグローバル側に GPT 系の高推論モデル
+          (例: gpt-5.5 系) を採用したケースあり。ChatGPT auth 限定の場合があるため、
+          API key auth 環境ではダウングレードまたは別ロールへ振り直す。
       - target_cli: claude
         provider: anthropic
         model_family: frontier reasoning model
@@ -124,12 +133,18 @@ roles:
         provider: openai
         model_family: frontier reasoning model
         model_id: null
-        notes: Claude Code / Anthropic 系が主エージェントの場合の cross-review 候補。正式な model id は Codex CLI の現在仕様で確認する。
+        notes: >-
+          Claude Code / Anthropic 系が主 orchestrator の場合の cross-review 候補。
+          正式な model id は Codex CLI の現在仕様で確認する。
+          採用例 (advisory): 2026-04-28 時点でユーザーグローバル側に GPT 系の高推論モデル
+          (例: gpt-5.5 系) を cross-review reviewer として採用したケースあり。
+          ChatGPT auth 限定の場合があり、API key auth 環境では下位モデルへ override される
+          ことに注意。
       - target_cli: claude
         provider: anthropic
         model_family: frontier reasoning model
         model_id: null
-        notes: Codex / OpenAI 系が主エージェントの場合の cross-review 候補。正式な model id は Claude Code CLI の現在仕様で確認する。
+        notes: Codex / OpenAI 系が主 orchestrator の場合の cross-review 候補。正式な model id は Claude Code CLI の現在仕様で確認する。
 
   - role: coding_frontier
     purpose: 通常実装、難所の修正、レビュー後の中規模修正
@@ -156,6 +171,12 @@ roles:
         provider: anthropic
         model_family: fast balanced model
         model_id: null
+        notes: >-
+          採用例 (advisory): 2026-04-28 時点で軽量タスクの baseline を Anthropic の
+          中位モデル (例: claude-sonnet-4-6 系) に揃えたケースあり。
+          サブスクプラン下で品質優先、cutoff 新しさ、1M context、近フロンティア性能を
+          重視した判断。model_family も fast * から balanced * 系へ揃える運用が成立する。
+          実 model id は使用直前に公式 docs で確認する。
 
   - role: research_fast
     purpose: コード調査、docs調査、差分整理
@@ -169,9 +190,15 @@ roles:
         provider: anthropic
         model_family: fast reasoning model
         model_id: null
+        notes: >-
+          採用例 (advisory): 2026-04-28 時点で軽量タスクの baseline を Anthropic の
+          中位モデル (例: claude-sonnet-4-6 系) に揃えたケースあり。
+          サブスクプラン下で品質優先、cutoff 新しさ、1M context、近フロンティア性能を
+          重視した判断。model_family も fast * から balanced * 系へ揃える運用が成立する。
+          実 model id は使用直前に公式 docs で確認する。
 
   - role: docs_agent
-    purpose: README、設計docs、PR本文、引き継ぎ整備
+    purpose: README、設計docs、PR本文、ハンドオフ整備
     default_effort: medium
     candidates:
       - target_cli: codex
@@ -182,3 +209,9 @@ roles:
         provider: anthropic
         model_family: fast writing/coding model
         model_id: null
+        notes: >-
+          採用例 (advisory): 2026-04-28 時点で軽量タスクの baseline を Anthropic の
+          中位モデル (例: claude-sonnet-4-6 系) に揃えたケースあり。
+          サブスクプラン下で品質優先、cutoff 新しさ、1M context、近フロンティア性能を
+          重視した判断。model_family も fast * から balanced * 系へ揃える運用が成立する。
+          実 model id は使用直前に公式 docs で確認する。

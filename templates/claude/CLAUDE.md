@@ -9,7 +9,7 @@
 - 作業前に Git branch と dirty worktree を確認する。
 - 保護ブランチへ直接作業しない。
 - 実装後は lint、test、docs 更新、自己レビューを完了条件に含める。
-- 必要な cross-review では、主エージェントとは別 CLI / 別モデルファミリーの frontier reviewer を候補にし、採否は主 orchestrator が判断する。
+- 必要な cross-review では、主 orchestrator とは別 CLI / 別モデルファミリーの frontier reviewer を候補にし、採否は主 orchestrator が判断する。
 - 公式 docs、release notes、実環境を確認し、古い知識だけで判断しない。
 
 ## Reference Kit
