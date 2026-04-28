@@ -135,9 +135,13 @@ active plan-id は `.agentops/plans/current.md` の `> plan-id: \`<id>\`` 行か
 
 ### 既定の挙動と安全性
 
-- `--plan-id` / `--task-id` は `[A-Za-z0-9_.-]+` のみ許可（パストラバーサル防止）。
+- `--plan-id` / `--task-id` は `^[A-Za-z0-9][A-Za-z0-9_.-]*$` のみ許可し、連続ピリオド (`..`) を弾く（パストラバーサル防止）。`detect_active_plan_id` の戻り値も同じ検証を通す（frontmatter 改変への二重防御）。
+- `--date` は `YYYY-MM-DD` 形式のみ受け付ける。既定は Asia/Tokyo の今日。
+- `--summary` に改行 (`\n` / `\r`) を含めると exit 2。`|` は archive README の table を壊さないよう `\|` に escape して書き出す。
+- 移動先が既に存在する場合は move 前に exit 2 で停止する（途中まで move して残りで失敗、を防ぐ）。
+- 実行順序は **preflight → 計画表示 → dry-run なら return → move 全件 → README 挿入 / next-session 更新**。`OSError` は `AgentOpsError` で包んで stderr へ。half-state を残さない。
 - README 編集は同ディレクトリの一時ファイルへ書き出してから rename する atomic write。途中で停止しても原本は無傷。
-- next-session.md 更新も同様に atomic write。
+- next-session.md 更新も同様に atomic write。`completed_tasks: []` のような inline 空配列はブロック形式へ正規化してから 1 行追記する。block 形式でも inline 空配列でもない場合は entry_point だけ更新し配列追記はスキップする。
 - archive ディレクトリが存在しない場合は親ごと作成する。`README.md` 自体が存在しない場合は本コマンドでは作成しない（運用ガイド外の状態と判断し exit 2 で停止）。
 
 ### ロールバック手順
@@ -160,7 +164,10 @@ active plan-id は `.agentops/plans/current.md` の `> plan-id: \`<id>\`` 行か
 前提条件:
 
 - `--task-id` 利用時に `.agentops/plans/current.md` が存在し、`> plan-id: \`<id>\`` 行から plan-id を一意に抽出できる。
-- `--plan-id` の値が `[A-Za-z0-9_.-]+` で `..` を含まない。
+- `--plan-id` / 抽出された plan-id / `--task-id` がいずれも `^[A-Za-z0-9][A-Za-z0-9_.-]*$` を満たし `..` を含まない。
+- `--date` を指定する場合は `YYYY-MM-DD`。
+- `--summary` に改行を含めない。
+- 移動先（archive 配下の各 dst）が事前に存在しない。
 
 不変条件:
 
@@ -168,17 +175,19 @@ active plan-id は `.agentops/plans/current.md` の `> plan-id: \`<id>\`` 行か
 - `archive/README.md` の既存 row は改変しない（先頭挿入のみ）。
 - `next-session.md` の本文（マニュアル記述部分）には触らない。
 - 部分書き込みで停止せず atomic write で完結する。
+- メタデータ更新（README row 挿入 / next-session.md 更新）は move 全件成功後に行う。
 
 完了条件:
 
 - 移動完了後、`.agentops/tasks/<basename>.md` または対象 plan のファイル群が archive 配下に存在する。
-- next-session.md の `entry_point` と `completed_tasks` が更新されている（task サブコマンドのみ）。
+- next-session.md の `entry_point` と（block 形式または inline 空配列 → 正規化後の block 形式の）`completed_tasks` が更新されている（task サブコマンドのみ）。
 - README.md table の先頭に新規 row が 1 行追加されている（plan サブコマンドのみ）。
 - exit code 0 で終了する。
 
 停止条件:
 
-- active plan-id が検出できない（exit 2）。
+- active plan-id が検出できない / 抽出値が DbC を満たさない（exit 2）。
 - 対象 task ファイルが存在しない（exit 2）。
-- `--plan-id` / `--task-id` が検証に失敗（exit 2）。
-- `git mv` が失敗した（exit 2、stderr に git のエラーを表示）。
+- `--plan-id` / `--task-id` / `--date` / `--summary` が検証に失敗（exit 2）。
+- 移動先が既に存在する（exit 2、preflight 失敗）。
+- `git mv` または `shutil.move` が失敗した（exit 2、stderr に元エラーを表示）。

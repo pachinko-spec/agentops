@@ -527,15 +527,18 @@ def doctor(args: argparse.Namespace) -> int:
 #   - archive task : 個別 task ファイルを archive へ + next-session.md を自動更新
 # 詳細は docs/11-monitoring-cli.md に記述。
 
-# `> plan-id: \`<id>\`` 形式（または素のキー記述）に対応した簡易 parser。
+# ``> plan-id: `<id>` `` 形式（または素のキー記述）に対応した簡易 parser。
+# パストラバーサル防止のため `/` を許可せず、`.` も連続させない値だけを取り出す。
 PLAN_ID_PATTERN = re.compile(
-    r"plan-id\s*:\s*[`\"]?([A-Za-z0-9_./-]+?)[`\"]?\s*$",
-    re.MULTILINE | re.IGNORECASE,
+    r"^>?\s*plan-id\s*:\s*`?([A-Za-z0-9][A-Za-z0-9_.-]*)`?\s*$",
+    re.MULTILINE,
 )
 
-# 安全な plan-id / task-id (パストラバーサル防止)。`-` `.` `_` のみ許可。
+# 安全な plan-id / task-id (パストラバーサル防止)。
+# `-` `.` `_` を許可するが `..` のような連続ピリオド、先頭非英数は弾く。
 SAFE_PLAN_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 SAFE_TASK_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
+DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 # archive README の table separator 行（列数 3 の Markdown table）。
 ARCHIVE_README_SEPARATOR_PATTERN = re.compile(
@@ -546,7 +549,8 @@ ARCHIVE_README_SEPARATOR_PATTERN = re.compile(
 def detect_active_plan_id(project: Path) -> str:
     """.agentops/plans/current.md からアクティブな plan-id を取り出す。
 
-    フロントマター風の ``> plan-id: `<id>` `` 行を期待する。検出失敗は AgentOpsError。
+    フロントマター風の ``> plan-id: `<id>` `` 行を期待する。検出失敗または
+    `_validate_plan_id` での安全性チェック失敗は AgentOpsError。
     """
     plans_current = project / ".agentops" / "plans" / "current.md"
     if not plans_current.exists():
@@ -561,7 +565,10 @@ def detect_active_plan_id(project: Path) -> str:
             f"could not detect plan-id in {plans_current.relative_to(project)}; "
             "expected a line like '> plan-id: `<id>`'"
         )
-    return match.group(1).strip()
+    plan_id = match.group(1).strip()
+    # 抽出値も CLI 引数と同じ DbC で検証する（regex 改変や frontmatter 攻撃への二重防御）。
+    _validate_plan_id(plan_id)
+    return plan_id
 
 
 def is_git_repo(project: Path) -> bool:
@@ -584,8 +591,17 @@ def git_tracked(path: Path, project: Path) -> bool:
 
 
 def move_path(src: Path, dst: Path, *, project: Path, use_git: bool) -> None:
-    """git 管理ファイルは `git mv`、そうでなければ shutil.move で移動する。"""
-    dst.parent.mkdir(parents=True, exist_ok=True)
+    """git 管理ファイルは `git mv`、そうでなければ shutil.move で移動する。
+
+    `OSError` は AgentOpsError で包んでメイン処理側でクリーンに止められるようにする。
+    """
+    try:
+        dst.parent.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise AgentOpsError(
+            f"could not create parent directory for {dst}: {exc}"
+        ) from exc
+
     if use_git and git_tracked(src, project):
         rel_src = src.relative_to(project)
         rel_dst = dst.relative_to(project)
@@ -601,8 +617,12 @@ def move_path(src: Path, dst: Path, *, project: Path, use_git: bool) -> None:
                 f"git mv failed for {rel_src} -> {rel_dst}: "
                 f"{result.stderr.strip() or result.stdout.strip()}"
             )
-    else:
+        return
+
+    try:
         shutil.move(str(src), str(dst))
+    except OSError as exc:
+        raise AgentOpsError(f"failed to move {src} -> {dst}: {exc}") from exc
 
 
 def archive_display_name(plan_id: str) -> str:
@@ -618,31 +638,31 @@ def atomic_write_text(path: Path, content: str) -> None:
     tmp.replace(path)
 
 
+def build_archive_readme_row(plan_id: str, summary: str, date: str) -> str:
+    """archive README へ挿入する Markdown table row を組み立てる。
+
+    `summary` 内の `|` は table を壊さないよう `\\|` に escape する。改行は
+    呼び出し側 (`archive_plan`) で事前に検証済み前提。
+    """
+    display_name = archive_display_name(plan_id)
+    safe_summary = summary.replace("|", r"\|")
+    return f"| {date} | [{display_name}]({plan_id}/plan.md) | {safe_summary} |"
+
+
 def insert_archive_readme_row(
     readme_path: Path,
     *,
-    plan_id: str,
-    summary: str,
-    date: str,
-    dry_run: bool,
+    new_row: str,
     project: Path,
-) -> str:
+) -> None:
     """archive/README.md の table 先頭（新しい順 = separator 行直後）に row を挿入する。
 
-    既存 row には触れない。dry_run 時は挿入予定 row 文字列だけ返す。
+    既存 row には触れない。本関数は本番実行専用（dry-run はコンソール表示で完結する）。
     """
-    display_name = archive_display_name(plan_id)
-    new_row = f"| {date} | [{display_name}]({plan_id}/plan.md) | {summary} |"
-
     if not readme_path.exists():
-        if not dry_run:
-            raise AgentOpsError(
-                f"archive README not found: {readme_path.relative_to(project)}"
-            )
-        return new_row
-
-    if dry_run:
-        return new_row
+        raise AgentOpsError(
+            f"archive README not found: {readme_path.relative_to(project)}"
+        )
 
     text = readme_path.read_text(encoding="utf-8")
     lines = text.splitlines()
@@ -662,7 +682,6 @@ def insert_archive_readme_row(
     if text.endswith("\n"):
         new_text += "\n"
     atomic_write_text(readme_path, new_text)
-    return new_row
 
 
 def update_next_session(
@@ -728,6 +747,18 @@ def update_next_session(
         flags=re.MULTILINE,
     )
 
+    # `completed_tasks: []` のような inline 空配列はブロック形式へ正規化する。
+    # ブロック形式しかパースしないと「追記成功」とログに出しつつファイルが変わらない
+    # 不整合になるため (Codex review P2 指摘)。`\s*` は改行を含み貪欲消費するので
+    # `[ \t]*` だけに絞り、行末の改行は触らない。
+    text = re.sub(
+        r"^(completed_tasks):[ \t]*\[[ \t]*\][ \t]*$",
+        r"\1:",
+        text,
+        count=1,
+        flags=re.MULTILINE,
+    )
+
     new_completed_line = f"  - {archived_task_id}"
     completed_pattern = re.compile(
         r"(^completed_tasks:[ \t]*\n(?:[ \t]+-[^\n]*\n)*)",
@@ -743,6 +774,10 @@ def update_next_session(
         ):
             new_block = block.rstrip("\n") + "\n" + new_completed_line + "\n"
             text = text[: match.start()] + new_block + text[match.end():]
+    else:
+        # block 形式でも inline 空配列でもなく、`completed_tasks:` が見当たらない、
+        # または別の形式（未対応）。run log には残るが追記しない。
+        pass
 
     atomic_write_text(next_session_path, text)
 
@@ -760,6 +795,10 @@ def _validate_plan_id(plan_id: str) -> None:
             f"invalid --plan-id {plan_id!r}; "
             "only [A-Za-z0-9_.-] allowed and must start with [A-Za-z0-9]"
         )
+    if ".." in plan_id:
+        raise AgentOpsError(
+            f"--plan-id may not contain '..': {plan_id!r}"
+        )
 
 
 def _validate_task_id(task_id: str) -> None:
@@ -768,6 +807,26 @@ def _validate_task_id(task_id: str) -> None:
             f"invalid --task-id {task_id!r}; "
             "only [A-Za-z0-9_.-] allowed and must start with [A-Za-z0-9]"
         )
+    if ".." in task_id:
+        raise AgentOpsError(
+            f"--task-id may not contain '..': {task_id!r}"
+        )
+
+
+def _validate_summary(summary: str) -> None:
+    """archive README の table を壊し得る改行を弾く。`|` は build 時に escape する。"""
+    if "\n" in summary or "\r" in summary:
+        raise AgentOpsError(
+            "--summary must not contain newline characters"
+        )
+
+
+def _validate_date(date: str) -> None:
+    """`--date` が `YYYY-MM-DD` 形式かを確認する。空文字は呼び出し前に既定値で埋める。"""
+    if not DATE_PATTERN.match(date):
+        raise AgentOpsError(
+            f"invalid --date {date!r}; expected YYYY-MM-DD"
+        )
 
 
 def archive_plan(args: argparse.Namespace) -> int:
@@ -775,6 +834,9 @@ def archive_plan(args: argparse.Namespace) -> int:
 
     既定では `.agentops/runs/` は移動しない（runs は plan-id と直接紐づかない場合があるため）。
     `--include-runs` を指定したときのみ runs/* を全件移動する。
+
+    実行順は preflight (dst 衝突確認) → 計画表示 → dry-run なら return → move → README 挿入
+    の順。途中で停止しても README / next-session を半端に書き換えない。
     """
     project = Path(args.project).resolve()
     plan_id = args.plan_id
@@ -783,6 +845,8 @@ def archive_plan(args: argparse.Namespace) -> int:
     dry_run = args.dry_run
 
     _validate_plan_id(plan_id)
+    _validate_summary(summary)
+    _validate_date(date)
 
     archive_root = project / ".agentops" / "archive" / plan_id
     operations: list[tuple[Path, Path]] = []
@@ -823,7 +887,20 @@ def archive_plan(args: argparse.Namespace) -> int:
                     (run_entry, archive_root / "runs" / run_entry.name)
                 )
 
+    # PREFLIGHT: 移動先の衝突を事前検知する。途中まで move → 失敗 で半端な状態を残さない。
+    for _src, dst in operations:
+        if dst.exists():
+            raise AgentOpsError(
+                f"archive destination already exists: "
+                f"{dst.relative_to(project)}"
+            )
+
     readme_path = project / ".agentops" / "archive" / "README.md"
+    if not readme_path.exists():
+        raise AgentOpsError(
+            f"archive README not found: {readme_path.relative_to(project)}"
+        )
+    new_row = build_archive_readme_row(plan_id, summary, date)
 
     print(f"{'[dry-run] ' if dry_run else ''}archive plan: {plan_id}")
     if not operations:
@@ -832,15 +909,6 @@ def archive_plan(args: argparse.Namespace) -> int:
         print(
             f"  move: {src.relative_to(project)} -> {dst.relative_to(project)}"
         )
-
-    new_row = insert_archive_readme_row(
-        readme_path,
-        plan_id=plan_id,
-        summary=summary,
-        date=date,
-        dry_run=dry_run,
-        project=project,
-    )
     print(
         f"  insert row to {readme_path.relative_to(project)}: {new_row}"
     )
@@ -851,11 +919,16 @@ def archive_plan(args: argparse.Namespace) -> int:
     use_git = is_git_repo(project)
     for src, dst in operations:
         move_path(src, dst, project=project, use_git=use_git)
+    insert_archive_readme_row(readme_path, new_row=new_row, project=project)
     return 0
 
 
 def archive_task(args: argparse.Namespace) -> int:
-    """個別 task md を archive へ移動し、next-session.md の entry_point / completed_tasks を更新する。"""
+    """個別 task md を archive へ移動し、next-session.md の entry_point / completed_tasks を更新する。
+
+    実行順は preflight (dst 衝突確認) → 計画表示 → dry-run なら return → move →
+    next-session.md 更新。途中で停止しても next-session.md を半端に書き換えない。
+    """
     project = Path(args.project).resolve()
     task_id = args.task_id
     dry_run = args.dry_run
@@ -871,31 +944,38 @@ def archive_task(args: argparse.Namespace) -> int:
     dst = (
         project / ".agentops" / "archive" / plan_id / "tasks" / f"{task_id}.md"
     )
+    if dst.exists():
+        raise AgentOpsError(
+            f"archive destination already exists: "
+            f"{dst.relative_to(project)}"
+        )
+
+    # dry-run プレビューを生成（実ファイルには触れない）。
+    next_session_preview = update_next_session(
+        project, task_id, dry_run=True
+    )
 
     print(
         f"{'[dry-run] ' if dry_run else ''}archive task: {task_id} "
         f"(active plan: {plan_id})"
     )
     print(f"  move: {src.relative_to(project)} -> {dst.relative_to(project)}")
-
-    next_session_update = update_next_session(
-        project, task_id, dry_run=dry_run
-    )
     print(
-        f"  next-session entry_point -> {next_session_update['entry_point']}"
+        f"  next-session entry_point -> {next_session_preview['entry_point']}"
     )
     print(
         f"  next-session completed_tasks += "
-        f"{next_session_update['completed_added']}"
+        f"{next_session_preview['completed_added']}"
     )
-    if "note" in next_session_update:
-        print(f"  note: {next_session_update['note']}")
+    if "note" in next_session_preview:
+        print(f"  note: {next_session_preview['note']}")
 
     if dry_run:
         return 0
 
     use_git = is_git_repo(project)
     move_path(src, dst, project=project, use_git=use_git)
+    update_next_session(project, task_id, dry_run=False)
     return 0
 
 
