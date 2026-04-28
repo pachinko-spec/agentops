@@ -37,27 +37,11 @@ scripts/install-hooks --target . --mode symlink
 | `AGENTOPS_TEST_COMMAND` | なし | pre-push で実行する検証コマンド |
 | `AGENTOPS_ALLOW_NO_TESTS` | `0` | `1` の場合だけ検証コマンド未設定の push を許可 |
 
-## DbC
+## DbC との関係
 
-前提条件:
+hooks は DbC の停止条件層のうち、commit / push 直前の品質ゲートを機械的に支える。DbC 5 条件（前提・不変・完了・禁止・停止）の単一真ソースは [DbCと品質ゲート](03-dbc-and-quality-gates.md) であり、本章ではそれを **hooks 文脈にどう適用するか** だけを記す。
 
-- 対象プロジェクトが Git リポジトリである。
-- hook から `scripts/check-protected-branch` と `scripts/check-tests-before-push` を呼べる。
-
-不変条件:
-
-- 保護対象ブランチへの直接 commit / push を許可しない。
-- 検証コマンドが失敗した状態で push しない。
-
-完了条件:
-
-- `pre-commit` が保護対象ブランチを拒否する。
-- `pre-push` が検証コマンドを実行し、失敗時に push を拒否する。
-
-停止条件:
-
-- 検証コマンドが未定義で、`AGENTOPS_ALLOW_NO_TESTS=1` も設定されていない。
-- 破壊的操作や secret 参照が必要になった。
+hooks の適用範囲: 対象プロジェクトが Git リポジトリで `scripts/check-protected-branch` と `scripts/check-tests-before-push` を呼び出せる場合に有効化する。`pre-commit` で保護対象ブランチを拒否し、`pre-push` で検証コマンドを実行して失敗時に push を拒否する。検証コマンドが未定義で `AGENTOPS_ALLOW_NO_TESTS=1` も設定されていない場合や、破壊的操作・secret 参照が必要な場合は、hooks をスキップせずに作業を停止し DbC 停止条件として扱う。
 
 ## AI エージェント hook の設計方針メモ (参考)
 
