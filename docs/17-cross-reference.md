@@ -1,3 +1,10 @@
+---
+last_reviewed: 2026-04-28
+next_review_by: 2026-07-31
+reviewer: pachinko-spec
+language: ja
+---
+
 # rule ↔ skill ↔ workflow ↔ hook 逆参照表
 
 > 上位文書: [docs/01-philosophy.md](./01-philosophy.md), [docs/03-dbc-and-quality-gates.md](./03-dbc-and-quality-gates.md)
