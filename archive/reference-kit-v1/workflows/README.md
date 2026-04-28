@@ -1,3 +1,5 @@
+> DEPRECATED — see /archive/reference-kit-v1/DEPRECATED.md
+
 # workflows
 
 再利用可能な開発workflowを置く場所です。

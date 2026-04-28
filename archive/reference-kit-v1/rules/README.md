@@ -1,3 +1,5 @@
+> DEPRECATED — see /archive/reference-kit-v1/DEPRECATED.md
+
 # rules
 
 AIエージェントが常時適用する判断基準を置く場所です。
