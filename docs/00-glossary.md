@@ -1,5 +1,8 @@
 ---
 last_reviewed: 2026-04-28
+next_review_by: 2026-07-31
+reviewer: pachinko-spec
+language: ja
 scope: glossary
 ---
 

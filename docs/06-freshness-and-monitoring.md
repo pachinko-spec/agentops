@@ -1,3 +1,10 @@
+---
+last_reviewed: 2026-04-28
+next_review_by: 2026-07-31
+reviewer: pachinko-spec
+language: ja
+---
+
 # 最新性と監視
 
 ## 最新性ポリシー
@@ -9,6 +16,10 @@
 - MCP対応クライアントで Context7 と Google Stitch が未導入なら導入する。導入時は現在の公式docs、GitHub、release notes、クライアント側MCP docsを確認する。
 - API key は shell profile（例: `.bashrv`）で export 済みの `CONTEXT7_API_KEY` と `STITCH_API_KEY` を使い、secret値をリポジトリ、PR、ログへ出さない。
 - 導入時は公式docs、GitHub、package registry、release notes、security advisoryを確認する。
+
+## last_reviewed フロントマター形式
+
+`docs/` 直下の番号付き Markdown 全件に YAML フロントマター（`---` 区切り）で `last_reviewed` / `next_review_by` / `reviewer` / `language` の 4 キーを記録する。Markdown 標準のメタデータ表記であり、task 08 (P1-07) の CI freshness-check ジョブが grep / yq でパースしやすく、既存 docs ビルドツールへの影響もない。blockquote 互換形式（`> last-reviewed: ...`）は本文と区別が曖昧で機械判別が脆くなるため不採用とする。`docs/00-glossary.md` のみ glossary 性のメタ情報として `scope: glossary` を 5 キー目に保持する例外を許容する。共通 4 キーが全 docs に存在することを不変条件とし、ファイル固有のキー追加（例: `scope`）は本不変条件を破らない。日付は ISO 8601 (`YYYY-MM-DD`)、`reviewer` は GitHub user 名、`language` は IETF BCP 47 sub-tag (`ja` / `en` 等) を記録する。
 
 ## 陳腐化チェック対象
 

@@ -1,3 +1,10 @@
+---
+last_reviewed: 2026-04-28
+next_review_by: 2026-07-31
+reviewer: pachinko-spec
+language: ja
+---
+
 # 実設定雛形
 
 `docs/` は設計思想、`rules/`、`skills/`、`workflows/` は候補カタログ、`templates/` は Claude Code / Codex / `.agentops` 向け生成雛形です。`config/` は Claude Code、Codex、監視CLI、harness などで使う反映候補の雛形であり、実環境と対象 CLI の仕様を確認したうえで、必要な範囲だけ採否を判断し、要約・調整して使います。
