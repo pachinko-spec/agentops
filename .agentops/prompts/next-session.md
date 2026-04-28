@@ -1,10 +1,13 @@
 # Next session プロンプト（2026-04-28 設計レビュー実装フェーズ）
 
 parent_plan: 2026-04-28-design-review-p0-p1
-status: pending implementation
+status: in progress (task 01 P0-02 完了 / 残り 8 task)
 created_at: 2026-04-28
+updated_at: 2026-04-28
 timezone: Asia/Tokyo
-entry_point: .agentops/tasks/01-p0-02-tool-stop-conditions.md
+entry_point: .agentops/tasks/02-p1-01-glossary.md
+completed_tasks:
+  - 01-p0-02-tool-stop-conditions (PR 未確定 / archive 済)
 
 ---
 

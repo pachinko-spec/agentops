@@ -67,7 +67,7 @@ DbC はすべてのタスクで使う軽量な契約である。harness は、Db
 | 不変条件 | sandbox、secret、network、scope、forbidden commands |
 | 完了条件 | oracle、success criteria、artifact policy |
 | 禁止事項 | forbidden commands、secret policy、network policy |
-| 停止条件 | timeout、retry limit、oracle 不明、fixture 不足 |
+| 停止条件 | timeout、retry limit、oracle 不明、fixture 不足、[DbCと品質ゲート](03-dbc-and-quality-gates.md#停止条件) の 2 階層（プロセス層 + tool 実行層）|
 
 ### workflow
 

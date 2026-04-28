@@ -32,10 +32,22 @@ DbC はすべてのタスクに使う軽量な契約である。再現性、arti
 - 無限Issue起票
 
 ## 停止条件
+
+### プロセス層（人間判断・ループ防止）
+
 - テスト失敗修正が2周を超えた
 - レビュー修正が2周を超えた
 - 仕様判断が必要になった
 - セキュリティ・データ損失リスクが出た
+
+### tool 実行層（個別ツール呼び出しの暴走防止）
+
+- max_tool_calls 超過（既定 200 回）
+- no_progress_steps 超過（既定 10 ステップ進捗無し）
+- circuit_breaker_cycle_threshold 超過（同一サイクル 3 回検知）
+- cost_cap_usd_per_session 超過（既定 USD 20 / session）
+
+これらの閾値は `config/harness.yml` の `defaults.stop_conditions.tool_layer` に機械可読 spec として保持する。プロジェクトごとに上書きできる。閾値の根拠は runaway agent の代表事例（cordum.io / blog.meganova.ai）と ABC 論文 (arXiv:2602.22302) の (p, δ, k)-satisfaction を参考にしているが、具体額は固定しない（一次性が弱いため）。
 ```
 
 ## commit / push条件
