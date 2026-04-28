@@ -649,6 +649,26 @@ def build_archive_readme_row(plan_id: str, summary: str, date: str) -> str:
     return f"| {date} | [{display_name}]({plan_id}/plan.md) | {safe_summary} |"
 
 
+def find_archive_readme_separator(readme_path: Path, project: Path) -> int:
+    """archive/README.md の table separator 行 index を返す。
+
+    preflight で move より前に呼ぶことで、move 完了後に README 挿入だけが失敗する
+    half-state を防ぐ（Codex round-2 review P1 指摘）。
+    """
+    if not readme_path.exists():
+        raise AgentOpsError(
+            f"archive README not found: {readme_path.relative_to(project)}"
+        )
+    text = readme_path.read_text(encoding="utf-8")
+    for i, line in enumerate(text.splitlines()):
+        if ARCHIVE_README_SEPARATOR_PATTERN.match(line):
+            return i
+    raise AgentOpsError(
+        f"could not find table separator in "
+        f"{readme_path.relative_to(project)}"
+    )
+
+
 def insert_archive_readme_row(
     readme_path: Path,
     *,
@@ -658,30 +678,37 @@ def insert_archive_readme_row(
     """archive/README.md の table 先頭（新しい順 = separator 行直後）に row を挿入する。
 
     既存 row には触れない。本関数は本番実行専用（dry-run はコンソール表示で完結する）。
+    呼び出し前に `find_archive_readme_separator` で preflight 済み前提。
     """
-    if not readme_path.exists():
-        raise AgentOpsError(
-            f"archive README not found: {readme_path.relative_to(project)}"
-        )
-
+    separator_idx = find_archive_readme_separator(readme_path, project)
     text = readme_path.read_text(encoding="utf-8")
     lines = text.splitlines()
-    separator_idx: int | None = None
-    for i, line in enumerate(lines):
-        if ARCHIVE_README_SEPARATOR_PATTERN.match(line):
-            separator_idx = i
-            break
-    if separator_idx is None:
-        raise AgentOpsError(
-            f"could not find table separator in "
-            f"{readme_path.relative_to(project)}"
-        )
-
     lines.insert(separator_idx + 1, new_row)
     new_text = "\n".join(lines)
     if text.endswith("\n"):
         new_text += "\n"
     atomic_write_text(readme_path, new_text)
+
+
+_COMPLETED_TASKS_INLINE_EMPTY_PATTERN = re.compile(
+    r"^(completed_tasks):[ \t]*\[[ \t]*\][ \t]*$",
+    re.MULTILINE,
+)
+_COMPLETED_TASKS_BLOCK_PATTERN = re.compile(
+    r"(^completed_tasks:[ \t]*\n(?:[ \t]+-[^\n]*\n)*)",
+    re.MULTILINE,
+)
+_UNSUPPORTED_COMPLETED_TASKS_NOTE = (
+    "(skipped: unsupported completed_tasks format; "
+    "expected block list or inline empty array)"
+)
+
+
+def _planned_entry_point(remaining: list[str]) -> str:
+    """tasks/ 残ファイル名から、書き換え予定の entry_point 値を組み立てる。"""
+    if remaining:
+        return f".agentops/tasks/{remaining[0]}"
+    return "(none — all tasks archived; consider removing this file)"
 
 
 def update_next_session(
@@ -693,6 +720,8 @@ def update_next_session(
     """next-session.md の `entry_point` / `updated_at` を更新し `completed_tasks` に行を足す。
 
     本文（マニュアル記述部分）は触らない。dry_run 時は予定値だけ返してファイルは触らない。
+    `completed_tasks` が block 形式でも inline 空配列でもない場合は配列追記をスキップし、
+    呼び出し元の log でも `(skipped: unsupported ...)` を返す（dry-run と本番で表示が一致）。
     """
     next_session_path = project / ".agentops" / "prompts" / "next-session.md"
 
@@ -706,30 +735,36 @@ def update_next_session(
                 continue
             remaining.append(task_file.name)
 
-    new_entry_point_value = f".agentops/tasks/{remaining[0]}" if remaining else ""
+    planned_entry_point = _planned_entry_point(remaining)
 
     if not next_session_path.exists():
         return {
-            "entry_point": new_entry_point_value or "(none)",
-            "completed_added": archived_task_id,
-            "note": "skipped: next-session.md does not exist",
-        }
-
-    if dry_run:
-        return {
-            "entry_point": new_entry_point_value or "(none — all tasks archived)",
-            "completed_added": archived_task_id,
+            "entry_point": planned_entry_point,
+            "completed_added": "(skipped: next-session.md does not exist)",
         }
 
     text = next_session_path.read_text(encoding="utf-8")
 
-    if new_entry_point_value:
-        replacement_entry = f"entry_point: {new_entry_point_value}"
+    # 形式判定: 実ファイルを inline 空配列正規化したうえで block 形式の存在を確認する。
+    # dry-run と本番で同じ判定を共有することで、preview と実体の差異 (Codex round-2 P2) を防ぐ。
+    normalized_for_check = _COMPLETED_TASKS_INLINE_EMPTY_PATTERN.sub(
+        r"\1:", text, count=1
+    )
+    has_block = _COMPLETED_TASKS_BLOCK_PATTERN.search(
+        normalized_for_check
+    ) is not None
+    if has_block:
+        completed_status = archived_task_id
     else:
-        replacement_entry = (
-            "entry_point: (none — all tasks archived; "
-            "consider removing this file)"
-        )
+        completed_status = _UNSUPPORTED_COMPLETED_TASKS_NOTE
+
+    if dry_run:
+        return {
+            "entry_point": planned_entry_point,
+            "completed_added": completed_status,
+        }
+
+    replacement_entry = f"entry_point: {planned_entry_point}"
     text, entry_subs = re.subn(
         r"^entry_point:.*$",
         lambda _m: replacement_entry,
@@ -747,43 +782,28 @@ def update_next_session(
         flags=re.MULTILINE,
     )
 
-    # `completed_tasks: []` のような inline 空配列はブロック形式へ正規化する。
-    # ブロック形式しかパースしないと「追記成功」とログに出しつつファイルが変わらない
-    # 不整合になるため (Codex review P2 指摘)。`\s*` は改行を含み貪欲消費するので
-    # `[ \t]*` だけに絞り、行末の改行は触らない。
-    text = re.sub(
-        r"^(completed_tasks):[ \t]*\[[ \t]*\][ \t]*$",
-        r"\1:",
-        text,
-        count=1,
-        flags=re.MULTILINE,
-    )
-
-    new_completed_line = f"  - {archived_task_id}"
-    completed_pattern = re.compile(
-        r"(^completed_tasks:[ \t]*\n(?:[ \t]+-[^\n]*\n)*)",
-        re.MULTILINE,
-    )
-    match = completed_pattern.search(text)
-    if match:
-        block = match.group(1)
-        if not re.search(
-            rf"^[ \t]+-[ \t]+{re.escape(archived_task_id)}(\s|$)",
-            block,
-            re.MULTILINE,
-        ):
-            new_block = block.rstrip("\n") + "\n" + new_completed_line + "\n"
-            text = text[: match.start()] + new_block + text[match.end():]
-    else:
-        # block 形式でも inline 空配列でもなく、`completed_tasks:` が見当たらない、
-        # または別の形式（未対応）。run log には残るが追記しない。
-        pass
+    text = _COMPLETED_TASKS_INLINE_EMPTY_PATTERN.sub(r"\1:", text, count=1)
+    if has_block:
+        new_completed_line = f"  - {archived_task_id}"
+        match = _COMPLETED_TASKS_BLOCK_PATTERN.search(text)
+        if match:
+            block = match.group(1)
+            already_listed = re.search(
+                rf"^[ \t]+-[ \t]+{re.escape(archived_task_id)}(\s|$)",
+                block,
+                re.MULTILINE,
+            )
+            if not already_listed:
+                new_block = (
+                    block.rstrip("\n") + "\n" + new_completed_line + "\n"
+                )
+                text = text[: match.start()] + new_block + text[match.end():]
 
     atomic_write_text(next_session_path, text)
 
     return {
-        "entry_point": new_entry_point_value or "(none — all tasks archived)",
-        "completed_added": archived_task_id,
+        "entry_point": planned_entry_point,
+        "completed_added": completed_status,
         "entry_replaced": "yes" if entry_subs else "no",
     }
 
@@ -896,10 +916,8 @@ def archive_plan(args: argparse.Namespace) -> int:
             )
 
     readme_path = project / ".agentops" / "archive" / "README.md"
-    if not readme_path.exists():
-        raise AgentOpsError(
-            f"archive README not found: {readme_path.relative_to(project)}"
-        )
+    # README 存在 + separator 行存在 を move 前に検証する（half-state 防止）。
+    find_archive_readme_separator(readme_path, project)
     new_row = build_archive_readme_row(plan_id, summary, date)
 
     print(f"{'[dry-run] ' if dry_run else ''}archive plan: {plan_id}")
@@ -963,12 +981,13 @@ def archive_task(args: argparse.Namespace) -> int:
     print(
         f"  next-session entry_point -> {next_session_preview['entry_point']}"
     )
-    print(
-        f"  next-session completed_tasks += "
-        f"{next_session_preview['completed_added']}"
-    )
-    if "note" in next_session_preview:
-        print(f"  note: {next_session_preview['note']}")
+    completed_added = next_session_preview["completed_added"]
+    if completed_added.startswith("(skipped"):
+        # 実ファイル形式が非対応 / 不在で配列追記しないケース。`+=` と書くと誤解の元なので
+        # ステータス文字列として表示する（dry-run / 本番で表示が一致する）。
+        print(f"  next-session completed_tasks: {completed_added}")
+    else:
+        print(f"  next-session completed_tasks += {completed_added}")
 
     if dry_run:
         return 0
