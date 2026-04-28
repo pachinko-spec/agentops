@@ -4,7 +4,9 @@ import argparse
 import json
 import os
 from pathlib import Path
+import re
 import shlex
+import shutil
 import string
 import subprocess
 import sys
@@ -517,6 +519,386 @@ def doctor(args: argparse.Namespace) -> int:
     return 0 if all(checks.values()) else 1
 
 
+# ----- archive サブコマンド -----
+#
+# `.agentops/` 運用ルール (CLAUDE.md / AGENTS.md durable instructions §auto-merge 後の必須手順)
+# を CLI で機械強制するためのコマンド群。
+#   - archive plan : plan 全体（plans / task-plans / tasks / reviews）を archive へ
+#   - archive task : 個別 task ファイルを archive へ + next-session.md を自動更新
+# 詳細は docs/11-monitoring-cli.md に記述。
+
+# `> plan-id: \`<id>\`` 形式（または素のキー記述）に対応した簡易 parser。
+PLAN_ID_PATTERN = re.compile(
+    r"plan-id\s*:\s*[`\"]?([A-Za-z0-9_./-]+?)[`\"]?\s*$",
+    re.MULTILINE | re.IGNORECASE,
+)
+
+# 安全な plan-id / task-id (パストラバーサル防止)。`-` `.` `_` のみ許可。
+SAFE_PLAN_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
+SAFE_TASK_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
+
+# archive README の table separator 行（列数 3 の Markdown table）。
+ARCHIVE_README_SEPARATOR_PATTERN = re.compile(
+    r"^\|[\s\-:]+\|[\s\-:]+\|[\s\-:]+\|\s*$"
+)
+
+
+def detect_active_plan_id(project: Path) -> str:
+    """.agentops/plans/current.md からアクティブな plan-id を取り出す。
+
+    フロントマター風の ``> plan-id: `<id>` `` 行を期待する。検出失敗は AgentOpsError。
+    """
+    plans_current = project / ".agentops" / "plans" / "current.md"
+    if not plans_current.exists():
+        raise AgentOpsError(
+            "active plan not found: "
+            f"{plans_current.relative_to(project)} does not exist"
+        )
+    text = plans_current.read_text(encoding="utf-8")
+    match = PLAN_ID_PATTERN.search(text)
+    if not match:
+        raise AgentOpsError(
+            f"could not detect plan-id in {plans_current.relative_to(project)}; "
+            "expected a line like '> plan-id: `<id>`'"
+        )
+    return match.group(1).strip()
+
+
+def is_git_repo(project: Path) -> bool:
+    """project が git worktree 配下にあるかの軽量判定。"""
+    return (project / ".git").exists()
+
+
+def git_tracked(path: Path, project: Path) -> bool:
+    """path が git の管理下にあるかを `git ls-files` で確認する。"""
+    try:
+        result = subprocess.run(
+            ["git", "ls-files", "--error-unmatch", str(path.relative_to(project))],
+            cwd=project,
+            check=False,
+            capture_output=True,
+        )
+    except (FileNotFoundError, OSError):
+        return False
+    return result.returncode == 0
+
+
+def move_path(src: Path, dst: Path, *, project: Path, use_git: bool) -> None:
+    """git 管理ファイルは `git mv`、そうでなければ shutil.move で移動する。"""
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    if use_git and git_tracked(src, project):
+        rel_src = src.relative_to(project)
+        rel_dst = dst.relative_to(project)
+        result = subprocess.run(
+            ["git", "mv", str(rel_src), str(rel_dst)],
+            cwd=project,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            raise AgentOpsError(
+                f"git mv failed for {rel_src} -> {rel_dst}: "
+                f"{result.stderr.strip() or result.stdout.strip()}"
+            )
+    else:
+        shutil.move(str(src), str(dst))
+
+
+def archive_display_name(plan_id: str) -> str:
+    """`YYYY-MM-DD-foo-bar` から `foo-bar` を取り出す。日付プレフィックスがなければそのまま。"""
+    match = re.match(r"^\d{4}-\d{2}-\d{2}-(.+)$", plan_id)
+    return match.group(1) if match else plan_id
+
+
+def atomic_write_text(path: Path, content: str) -> None:
+    """同ディレクトリの一時ファイルへ書き出してから rename する。"""
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(content, encoding="utf-8")
+    tmp.replace(path)
+
+
+def insert_archive_readme_row(
+    readme_path: Path,
+    *,
+    plan_id: str,
+    summary: str,
+    date: str,
+    dry_run: bool,
+    project: Path,
+) -> str:
+    """archive/README.md の table 先頭（新しい順 = separator 行直後）に row を挿入する。
+
+    既存 row には触れない。dry_run 時は挿入予定 row 文字列だけ返す。
+    """
+    display_name = archive_display_name(plan_id)
+    new_row = f"| {date} | [{display_name}]({plan_id}/plan.md) | {summary} |"
+
+    if not readme_path.exists():
+        if not dry_run:
+            raise AgentOpsError(
+                f"archive README not found: {readme_path.relative_to(project)}"
+            )
+        return new_row
+
+    if dry_run:
+        return new_row
+
+    text = readme_path.read_text(encoding="utf-8")
+    lines = text.splitlines()
+    separator_idx: int | None = None
+    for i, line in enumerate(lines):
+        if ARCHIVE_README_SEPARATOR_PATTERN.match(line):
+            separator_idx = i
+            break
+    if separator_idx is None:
+        raise AgentOpsError(
+            f"could not find table separator in "
+            f"{readme_path.relative_to(project)}"
+        )
+
+    lines.insert(separator_idx + 1, new_row)
+    new_text = "\n".join(lines)
+    if text.endswith("\n"):
+        new_text += "\n"
+    atomic_write_text(readme_path, new_text)
+    return new_row
+
+
+def update_next_session(
+    project: Path,
+    archived_task_id: str,
+    *,
+    dry_run: bool,
+) -> dict[str, str]:
+    """next-session.md の `entry_point` / `updated_at` を更新し `completed_tasks` に行を足す。
+
+    本文（マニュアル記述部分）は触らない。dry_run 時は予定値だけ返してファイルは触らない。
+    """
+    next_session_path = project / ".agentops" / "prompts" / "next-session.md"
+
+    tasks_dir = project / ".agentops" / "tasks"
+    remaining: list[str] = []
+    if tasks_dir.exists():
+        for task_file in sorted(tasks_dir.glob("*.md")):
+            if task_file.name == "README.md":
+                continue
+            if task_file.stem == archived_task_id:
+                continue
+            remaining.append(task_file.name)
+
+    new_entry_point_value = f".agentops/tasks/{remaining[0]}" if remaining else ""
+
+    if not next_session_path.exists():
+        return {
+            "entry_point": new_entry_point_value or "(none)",
+            "completed_added": archived_task_id,
+            "note": "skipped: next-session.md does not exist",
+        }
+
+    if dry_run:
+        return {
+            "entry_point": new_entry_point_value or "(none — all tasks archived)",
+            "completed_added": archived_task_id,
+        }
+
+    text = next_session_path.read_text(encoding="utf-8")
+
+    if new_entry_point_value:
+        replacement_entry = f"entry_point: {new_entry_point_value}"
+    else:
+        replacement_entry = (
+            "entry_point: (none — all tasks archived; "
+            "consider removing this file)"
+        )
+    text, entry_subs = re.subn(
+        r"^entry_point:.*$",
+        lambda _m: replacement_entry,
+        text,
+        count=1,
+        flags=re.MULTILINE,
+    )
+
+    today = jst_now().strftime("%Y-%m-%d")
+    text, _updated_subs = re.subn(
+        r"^updated_at:.*$",
+        lambda _m: f"updated_at: {today}",
+        text,
+        count=1,
+        flags=re.MULTILINE,
+    )
+
+    new_completed_line = f"  - {archived_task_id}"
+    completed_pattern = re.compile(
+        r"(^completed_tasks:[ \t]*\n(?:[ \t]+-[^\n]*\n)*)",
+        re.MULTILINE,
+    )
+    match = completed_pattern.search(text)
+    if match:
+        block = match.group(1)
+        if not re.search(
+            rf"^[ \t]+-[ \t]+{re.escape(archived_task_id)}(\s|$)",
+            block,
+            re.MULTILINE,
+        ):
+            new_block = block.rstrip("\n") + "\n" + new_completed_line + "\n"
+            text = text[: match.start()] + new_block + text[match.end():]
+
+    atomic_write_text(next_session_path, text)
+
+    return {
+        "entry_point": new_entry_point_value or "(none — all tasks archived)",
+        "completed_added": archived_task_id,
+        "entry_replaced": "yes" if entry_subs else "no",
+    }
+
+
+def _validate_plan_id(plan_id: str) -> None:
+    """パストラバーサル防止と慣行（英数 + ハイフン）の確認。"""
+    if not SAFE_PLAN_ID_PATTERN.match(plan_id):
+        raise AgentOpsError(
+            f"invalid --plan-id {plan_id!r}; "
+            "only [A-Za-z0-9_.-] allowed and must start with [A-Za-z0-9]"
+        )
+
+
+def _validate_task_id(task_id: str) -> None:
+    if not SAFE_TASK_ID_PATTERN.match(task_id):
+        raise AgentOpsError(
+            f"invalid --task-id {task_id!r}; "
+            "only [A-Za-z0-9_.-] allowed and must start with [A-Za-z0-9]"
+        )
+
+
+def archive_plan(args: argparse.Namespace) -> int:
+    """plan 全体を `.agentops/archive/<plan-id>/` へ移動し README table へ row を挿入する。
+
+    既定では `.agentops/runs/` は移動しない（runs は plan-id と直接紐づかない場合があるため）。
+    `--include-runs` を指定したときのみ runs/* を全件移動する。
+    """
+    project = Path(args.project).resolve()
+    plan_id = args.plan_id
+    summary = args.summary
+    date = args.date or jst_now().strftime("%Y-%m-%d")
+    dry_run = args.dry_run
+
+    _validate_plan_id(plan_id)
+
+    archive_root = project / ".agentops" / "archive" / plan_id
+    operations: list[tuple[Path, Path]] = []
+
+    plans_current = project / ".agentops" / "plans" / "current.md"
+    if plans_current.exists():
+        operations.append((plans_current, archive_root / "plan.md"))
+
+    task_plan_current = project / ".agentops" / "task-plans" / "current.md"
+    if task_plan_current.exists():
+        operations.append(
+            (task_plan_current, archive_root / "task-plans" / "current.md")
+        )
+
+    tasks_dir = project / ".agentops" / "tasks"
+    if tasks_dir.exists():
+        for task_file in sorted(tasks_dir.glob("*.md")):
+            if task_file.name == "README.md":
+                continue
+            operations.append(
+                (task_file, archive_root / "tasks" / task_file.name)
+            )
+
+    reviews_dir = project / ".agentops" / "reviews"
+    if reviews_dir.exists():
+        for review_entry in sorted(reviews_dir.iterdir()):
+            if review_entry.name == "README.md":
+                continue
+            operations.append(
+                (review_entry, archive_root / "reviews" / review_entry.name)
+            )
+
+    if args.include_runs:
+        runs_dir = project / ".agentops" / "runs"
+        if runs_dir.exists():
+            for run_entry in sorted(runs_dir.iterdir()):
+                operations.append(
+                    (run_entry, archive_root / "runs" / run_entry.name)
+                )
+
+    readme_path = project / ".agentops" / "archive" / "README.md"
+
+    print(f"{'[dry-run] ' if dry_run else ''}archive plan: {plan_id}")
+    if not operations:
+        print("  (no plans / task-plans / tasks / reviews to move)")
+    for src, dst in operations:
+        print(
+            f"  move: {src.relative_to(project)} -> {dst.relative_to(project)}"
+        )
+
+    new_row = insert_archive_readme_row(
+        readme_path,
+        plan_id=plan_id,
+        summary=summary,
+        date=date,
+        dry_run=dry_run,
+        project=project,
+    )
+    print(
+        f"  insert row to {readme_path.relative_to(project)}: {new_row}"
+    )
+
+    if dry_run:
+        return 0
+
+    use_git = is_git_repo(project)
+    for src, dst in operations:
+        move_path(src, dst, project=project, use_git=use_git)
+    return 0
+
+
+def archive_task(args: argparse.Namespace) -> int:
+    """個別 task md を archive へ移動し、next-session.md の entry_point / completed_tasks を更新する。"""
+    project = Path(args.project).resolve()
+    task_id = args.task_id
+    dry_run = args.dry_run
+
+    _validate_task_id(task_id)
+    plan_id = detect_active_plan_id(project)
+
+    src = project / ".agentops" / "tasks" / f"{task_id}.md"
+    if not src.exists():
+        raise AgentOpsError(
+            f"task file not found: {src.relative_to(project)}"
+        )
+    dst = (
+        project / ".agentops" / "archive" / plan_id / "tasks" / f"{task_id}.md"
+    )
+
+    print(
+        f"{'[dry-run] ' if dry_run else ''}archive task: {task_id} "
+        f"(active plan: {plan_id})"
+    )
+    print(f"  move: {src.relative_to(project)} -> {dst.relative_to(project)}")
+
+    next_session_update = update_next_session(
+        project, task_id, dry_run=dry_run
+    )
+    print(
+        f"  next-session entry_point -> {next_session_update['entry_point']}"
+    )
+    print(
+        f"  next-session completed_tasks += "
+        f"{next_session_update['completed_added']}"
+    )
+    if "note" in next_session_update:
+        print(f"  note: {next_session_update['note']}")
+
+    if dry_run:
+        return 0
+
+    use_git = is_git_repo(project)
+    move_path(src, dst, project=project, use_git=use_git)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """agentops CLI のサブコマンドと引数を定義する。"""
     parser = argparse.ArgumentParser(prog="agentops", description="AgentOps CLI wrapper")
@@ -545,6 +927,56 @@ def build_parser() -> argparse.ArgumentParser:
     doctor_parser.add_argument("--project", default=".")
     doctor_parser.add_argument("--json", action="store_true")
     doctor_parser.set_defaults(func=doctor)
+
+    archive_parser = sub.add_parser(
+        "archive",
+        help="archive a completed plan or task into .agentops/archive/<plan-id>/",
+    )
+    archive_sub = archive_parser.add_subparsers(
+        dest="archive_command", required=True
+    )
+
+    archive_plan_parser = archive_sub.add_parser(
+        "plan",
+        help=(
+            "move plans/current.md, task-plans/current.md, tasks/*, reviews/* "
+            "into .agentops/archive/<plan-id>/ and add a row to archive/README.md"
+        ),
+    )
+    archive_plan_parser.add_argument("--plan-id", required=True)
+    archive_plan_parser.add_argument("--summary", required=True)
+    archive_plan_parser.add_argument(
+        "--date",
+        default="",
+        help="completion date (default: today in Asia/Tokyo, YYYY-MM-DD)",
+    )
+    archive_plan_parser.add_argument(
+        "--include-runs",
+        action="store_true",
+        help=(
+            "also move .agentops/runs/* into the archive "
+            "(default: keep runs in place because they are not always plan-scoped)"
+        ),
+    )
+    archive_plan_parser.add_argument("--dry-run", action="store_true")
+    archive_plan_parser.add_argument("--project", default=".")
+    archive_plan_parser.set_defaults(func=archive_plan)
+
+    archive_task_parser = archive_sub.add_parser(
+        "task",
+        help=(
+            "move .agentops/tasks/<task-id>.md into the active plan's archive "
+            "and update .agentops/prompts/next-session.md"
+        ),
+    )
+    archive_task_parser.add_argument(
+        "--task-id",
+        required=True,
+        help="basename of the task file (without .md), e.g. 02-p1-01-glossary",
+    )
+    archive_task_parser.add_argument("--dry-run", action="store_true")
+    archive_task_parser.add_argument("--project", default=".")
+    archive_task_parser.set_defaults(func=archive_task)
 
     return parser
 
