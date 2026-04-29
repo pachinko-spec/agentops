@@ -998,6 +998,725 @@ def archive_task(args: argparse.Namespace) -> int:
     return 0
 
 
+# =============================================================================
+# localize subcommand (PR-D)
+# 既存プロジェクトの設計痕跡を inventory + 4 戦略意思決定木で推奨戦略を出す。
+# 仕様: docs/19-project-localization.md / docs/10-cli-wrapper.md
+# 不変条件: 既存 project ファイルを書き換えない (--dry-run 既定)。SECRET 値を
+# inventory / log / docs に書かない。痕跡内容の長文は転載しない (パス・存在・
+# サイズ・鮮度のみ)。
+# =============================================================================
+
+# 検出対象痕跡 (depth-2 まで)。docs/19 §検出対象 inventory に列挙したもの。
+LOCALIZE_TRACE_PATTERNS: dict[str, list[tuple[str, str]]] = {
+    "claude": [
+        ("CLAUDE.md", "file"),
+        (".claude", "dir-or-file"),
+    ],
+    "codex": [
+        ("AGENTS.md", "file"),
+        ("AGENTS.override.md", "file"),
+        (".codex", "dir-or-file"),
+    ],
+    "gemini": [
+        ("GEMINI.md", "file"),
+        (".gemini", "dir"),
+        (".agent", "dir"),
+    ],
+    "other": [
+        (".antigravity", "dir"),
+        (".cursorrules", "file"),
+        (".cursor", "dir"),
+        (".aider.conf.yml", "file"),
+        (".aider.chat.history.md", "file"),
+        (".aider.input.history", "file"),
+        (".windsurfrules", "file"),
+        (".continue", "dir"),
+        (".copilot", "dir"),
+    ],
+    "personal": [
+        (".ai", "dir"),
+        (".agentops", "dir"),
+    ],
+}
+
+# 除外対象 (docs/19 §除外対象 dot dir / dot file)。ここにマッチした path は
+# 痕跡対象外として skip し、再帰探索でも入らない。
+LOCALIZE_EXCLUDE_NAMES: frozenset[str] = frozenset(
+    {
+        # VCS / CI
+        ".git", ".github", ".gitlab",
+        ".gitignore", ".gitattributes",
+        # runtime / build / cache
+        ".tmp", ".cache", ".next", ".nuxt", ".svelte-kit", ".vite", ".turbo", ".parcel-cache",
+        "node_modules",
+        # deploy
+        ".wrangler", ".vercel", ".netlify", ".firebase", ".gcloud",
+        # IDE / editor
+        ".vscode", ".idea", ".zed", ".fleet",
+        # 環境 / Python
+        ".venv", ".python-version", ".tool-versions", ".nvmrc",
+        # テスト / MCP
+        ".playwright-mcp", ".playwright",
+    }
+)
+
+# 一般的な project tooling dot-dir / dot-file (docs/19 §除外対象に列挙されていないが
+# AI 痕跡ではない)。未列挙 AI 痕跡検出の false positive を抑えるため除外する。
+LOCALIZE_EXCLUDE_NAMES_TOOLING: frozenset[str] = frozenset(
+    {
+        ".husky", ".devcontainer", ".dependabot", ".changeset", ".cspell",
+        ".config", ".local",
+        ".editorconfig",
+        ".npmrc", ".yarnrc", ".yarnrc.yml", ".npmignore", ".yarnignore",
+        ".env", ".env.example", ".env.local", ".env.production", ".env.development", ".env.test",
+        ".dockerignore", ".dockerfile",
+        ".browserslistrc", ".node-version",
+        ".prettierrc", ".prettierrc.js", ".prettierrc.json", ".prettierrc.yml", ".prettierrc.yaml",
+        ".prettierignore",
+        ".eslintrc", ".eslintrc.js", ".eslintrc.json", ".eslintrc.yml",
+        ".eslintignore",
+        ".stylelintrc", ".babelrc",
+        ".ruff_cache", ".mypy_cache", ".pytest_cache", ".tox",
+        ".coverage",
+        ".storybook",
+        ".commitlintrc", ".lintstagedrc", ".releaserc",
+        ".markdownlint.json", ".markdownlintignore",
+    }
+)
+
+
+def _localize_is_excluded(name: str) -> bool:
+    """docs/19 §除外対象 + 一般 project tooling 除外を一元判定する。"""
+    return name in LOCALIZE_EXCLUDE_NAMES or name in LOCALIZE_EXCLUDE_NAMES_TOOLING
+
+
+# 標準 project docs (UPPERCASE.md だが AI 痕跡ではない) の denylist。
+# 未列挙 AI 痕跡候補検出 (`<VENDOR>.md` ヒューリスティック) で false positive を防ぐ。
+LOCALIZE_PROJECT_DOC_NAMES: frozenset[str] = frozenset(
+    {
+        "README.md", "CHANGELOG.md", "CONTRIBUTING.md", "CODE_OF_CONDUCT.md",
+        "LICENSE.md", "LICENCE.md", "COPYING.md", "NOTICE.md",
+        "SECURITY.md", "GOVERNANCE.md", "MAINTAINERS.md", "AUTHORS.md", "OWNERS.md",
+        "TODO.md", "FAQ.md", "USAGE.md", "INSTALL.md", "ROADMAP.md",
+        "HISTORY.md", "RELEASE.md", "RELEASES.md",
+        "SUPPORT.md", "STYLE.md", "STYLEGUIDE.md", "MIGRATION.md", "UPGRADING.md",
+        "ISSUE_TEMPLATE.md", "PULL_REQUEST_TEMPLATE.md",
+        "BUG_REPORT.md", "FEATURE_REQUEST.md", "DISCUSSION.md",
+    }
+)
+
+# 補助情報 (技術スタック判定)
+LOCALIZE_STACK_FILES: dict[str, str] = {
+    "package.json": "Node",
+    "go.mod": "Go",
+    "composer.json": "PHP",
+    "Cargo.toml": "Rust",
+    "Gemfile": "Ruby",
+    "pyproject.toml": "Python",
+    "requirements.txt": "Python",
+}
+
+LOCALIZE_STRATEGIES = (
+    "greenfield",
+    "inventory-rebuild",
+    "coexistence",
+    "freeze",
+    "needs-user-confirmation",
+)
+
+
+def _localize_freshness_bucket(days: int | None) -> str:
+    """鮮度を docs/19 の判定軸 4 (≤30 / 31-180 / 180+ / 不明) に対応させる。"""
+    if days is None:
+        return "unknown"
+    if days <= 30:
+        return "≤30d"
+    if days <= 180:
+        return "31-180d"
+    return "180+d"
+
+
+def _localize_match_pattern(name: str) -> tuple[str, str] | None:
+    """ファイル / dir 名が検出対象パターンに一致するなら (category, kind) を返す。"""
+    for cat, patterns in LOCALIZE_TRACE_PATTERNS.items():
+        for pname, kind in patterns:
+            if name == pname:
+                return cat, kind
+    if name.startswith(".aider"):
+        return "other", "file"
+    return None
+
+
+def _localize_record_trace(
+    base: Path,
+    entry: Path,
+    depth: int,
+    *,
+    now_ts: float,
+) -> dict[str, Any] | None:
+    """痕跡 entry に対する 1 件分の inventory record を作る。"""
+    matched = _localize_match_pattern(entry.name)
+    if matched is None:
+        return None
+    cat, _expected_kind = matched
+    try:
+        st = entry.stat()
+    except OSError:
+        return None
+    is_dir = entry.is_dir()
+    actual_kind = "dir" if is_dir else "file"
+    size = None if is_dir else st.st_size
+    mtime_days = max(0, int((now_ts - st.st_mtime) // 86400))
+    record: dict[str, Any] = {
+        "category": cat,
+        "name": entry.name,
+        "path": str(entry.relative_to(base)),
+        "kind": actual_kind,
+        "size_bytes": size,
+        "mtime_days": mtime_days,
+        "freshness": _localize_freshness_bucket(mtime_days),
+        "depth": depth,
+    }
+    if not is_dir and size == 0 and entry.name in (".claude", ".codex"):
+        record["zero_byte_marker"] = True
+    if is_dir:
+        try:
+            children = sorted(
+                c.name for c in entry.iterdir() if c.name not in LOCALIZE_EXCLUDE_NAMES
+            )
+        except (PermissionError, OSError):
+            children = []
+        record["children"] = children[:30]
+    return record
+
+
+def _localize_scan_traces(project: Path, max_depth: int = 2) -> list[dict[str, Any]]:
+    """痕跡を depth-2 まで scan して inventory list を返す。
+
+    検出対象は LOCALIZE_TRACE_PATTERNS、除外は LOCALIZE_EXCLUDE_NAMES。
+    """
+    found: list[dict[str, Any]] = []
+    now_ts = jst_now().timestamp()
+
+    def _walk(cur: Path, depth: int) -> None:
+        if depth > max_depth:
+            return
+        try:
+            entries = sorted(cur.iterdir(), key=lambda p: p.name)
+        except (PermissionError, OSError):
+            return
+        for entry in entries:
+            name = entry.name
+            if _localize_is_excluded(name):
+                continue
+            record = _localize_record_trace(project, entry, depth, now_ts=now_ts)
+            if record is not None:
+                found.append(record)
+                continue
+            if entry.is_dir() and depth < max_depth:
+                _walk(entry, depth + 1)
+
+    _walk(project, depth=1)
+    return found
+
+
+def _localize_is_known_pattern_name(name: str) -> bool:
+    """検出対象に列挙されたパターン名 (LOCALIZE_TRACE_PATTERNS + .aider*) を判定する。"""
+    for patterns in LOCALIZE_TRACE_PATTERNS.values():
+        for pname, _kind in patterns:
+            if name == pname:
+                return True
+    if name.startswith(".aider"):
+        return True
+    return False
+
+
+def _localize_detect_unlisted(project: Path, max_depth: int = 2) -> list[dict[str, Any]]:
+    """docs/19 §検出網羅性: 未列挙 AI 痕跡候補 (`.<vendor>/` / `.<vendor>rules` /
+    `<VENDOR>.md`) を検出する。検出されたら `needs-user-confirmation` で escalate する。
+
+    false positive を抑えるため `_localize_is_excluded` (docs/19 除外 + 一般 tooling)
+    を経由する。
+    """
+    now_ts = jst_now().timestamp()
+    unlisted: list[dict[str, Any]] = []
+    seen: set[str] = set()
+
+    def _walk(cur: Path, depth: int) -> None:
+        if depth > max_depth:
+            return
+        try:
+            entries = sorted(cur.iterdir(), key=lambda p: p.name)
+        except (PermissionError, OSError):
+            return
+        for entry in entries:
+            name = entry.name
+            if _localize_is_excluded(name):
+                continue
+            if _localize_is_known_pattern_name(name):
+                # 既知 AI 痕跡は本検出器の対象外 (上位 _localize_scan_traces が拾う)。
+                # ただし内部 dir は再帰しない (既知 dir 配下は子も既知配下として扱う)。
+                continue
+
+            is_dot_dir = name.startswith(".") and entry.is_dir()
+            # 標準 project docs (README.md / CHANGELOG.md 等) は AI 痕跡ではないので除外。
+            is_upper_md = (
+                not entry.is_dir()
+                and name.endswith(".md")
+                and len(name) > 3
+                and name[:-3].isupper()
+                and name not in LOCALIZE_PROJECT_DOC_NAMES
+            )
+            is_vendor_rules = (
+                not entry.is_dir() and name.startswith(".") and name.endswith("rules")
+            )
+
+            if is_dot_dir or is_upper_md or is_vendor_rules:
+                rel = str(entry.relative_to(project))
+                if rel in seen:
+                    continue
+                seen.add(rel)
+                try:
+                    st = entry.stat()
+                except OSError:
+                    continue
+                trigger = (
+                    "dot-dir" if is_dot_dir
+                    else ("UPPERCASE.md" if is_upper_md else "vendor-rules")
+                )
+                unlisted.append(
+                    {
+                        "path": rel,
+                        "name": name,
+                        "kind": "dir" if entry.is_dir() else "file",
+                        "size_bytes": None if entry.is_dir() else st.st_size,
+                        "mtime_days": max(0, int((now_ts - st.st_mtime) // 86400)),
+                        "depth": depth,
+                        "trigger": trigger,
+                    }
+                )
+
+            # subdir も再帰 (除外 / 既知パターンに該当しない一般 dir のみ)
+            if entry.is_dir() and depth < max_depth:
+                _walk(entry, depth + 1)
+
+    _walk(project, depth=1)
+    return unlisted
+
+
+def _localize_detect_stack(project: Path) -> dict[str, Any]:
+    """補助 file (`package.json` 等) から技術スタックを推定する。"""
+    detected: list[str] = []
+    details: dict[str, str] = {}
+    for fname, stack in LOCALIZE_STACK_FILES.items():
+        path = project / fname
+        if not path.exists():
+            continue
+        if stack not in detected:
+            detected.append(stack)
+        details[fname] = stack
+        if fname == "package.json":
+            try:
+                pkg = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            if not isinstance(pkg, dict):
+                continue
+            deps: dict[str, Any] = {}
+            for key in ("dependencies", "devDependencies", "peerDependencies"):
+                section = pkg.get(key)
+                if isinstance(section, dict):
+                    deps.update(section)
+            for marker in ("nuxt", "next", "react", "vue", "svelte"):
+                if marker in deps:
+                    details["framework"] = marker
+                    break
+    return {"detected": detected, "details": details}
+
+
+def _localize_git_activity(project: Path) -> dict[str, Any]:
+    """git の last commit / 30 日内 commit 数を取得する。"""
+    if not (project / ".git").exists():
+        return {"is_git_repo": False}
+    info: dict[str, Any] = {"is_git_repo": True}
+    try:
+        result = subprocess.run(
+            ["git", "log", "-1", "--format=%cI"],
+            cwd=project, capture_output=True, text=True, check=False, timeout=10,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            iso = result.stdout.strip()
+            info["last_commit_iso"] = iso
+            try:
+                commit_dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+                if commit_dt.tzinfo is None:
+                    commit_dt = commit_dt.replace(tzinfo=JST)
+                days = (jst_now() - commit_dt.astimezone(JST)).days
+                info["last_commit_days_ago"] = max(0, days)
+            except ValueError:
+                pass
+    except (subprocess.SubprocessError, OSError):
+        pass
+    try:
+        result = subprocess.run(
+            ["git", "rev-list", "--count", "HEAD", "--since=30 days ago"],
+            cwd=project, capture_output=True, text=True, check=False, timeout=10,
+        )
+        if result.returncode == 0 and result.stdout.strip().isdigit():
+            info["commits_last_30d"] = int(result.stdout.strip())
+    except (subprocess.SubprocessError, OSError):
+        pass
+    return info
+
+
+def _localize_assess_conflict(traces: list[dict[str, Any]]) -> tuple[str, list[str]]:
+    """痕跡から競合度を低 / 中 / 高 で推定する (docs/19 §競合判定マトリクス簡易版)。
+
+    `.claude/plans/` / `.ai/` フル構造 / `.agent/` substantial は **`.agentops/` の有無に
+    関わらず高〜中の競合**として扱う (二重運用は単独存在より厳しい衝突)。docs/19 §競合
+    判定マトリクス line 76-78 と整合。
+    """
+    by_name: dict[str, dict[str, Any]] = {t["name"]: t for t in traces if t["depth"] == 1}
+    reasons: list[str] = []
+    score = 1
+    has_agentops = ".agentops" in by_name
+    has_ai = ".ai" in by_name and by_name[".ai"]["kind"] == "dir"
+    has_agent = ".agent" in by_name and by_name[".agent"]["kind"] == "dir"
+    has_claude_dir = ".claude" in by_name and by_name[".claude"]["kind"] == "dir"
+    has_codex_dir = ".codex" in by_name and by_name[".codex"]["kind"] == "dir"
+    if has_claude_dir:
+        children = by_name[".claude"].get("children", []) or []
+        if "plans" in children:
+            score = max(score, 3)
+            if has_agentops:
+                reasons.append(".claude/plans/ + .agentops/ 既存 → plan 二重運用 (docs/19 §競合判定マトリクス 高)")
+            else:
+                reasons.append(".claude/plans/ + .agentops/ なし → plan 単一真ソース原則と衝突")
+        if "hooks" in children:
+            score = max(score, 2)
+            reasons.append(".claude/hooks/ あり → グローバル hook と event 競合候補")
+    if has_codex_dir:
+        children = by_name[".codex"].get("children", []) or []
+        if any(c in children for c in ("agents", "subagents", "hooks")):
+            score = max(score, 2)
+            reasons.append(".codex/ に subagent / hook あり → グローバル Codex 設定と責務重複")
+    if has_ai:
+        ai_children = by_name[".ai"].get("children", []) or []
+        if any(c in ai_children for c in ("contracts", "decisions", "gates", "memory", "reviews", "tasks")):
+            score = max(score, 3)
+            if has_agentops:
+                reasons.append(".ai/ フル構造 + .agentops/ 既存 → 責務重複 (docs/19 §競合判定マトリクス 高)")
+            else:
+                reasons.append(".ai/ フル構造 + .agentops/ なし → 責務重複候補")
+    if has_agent:
+        agent_children = by_name[".agent"].get("children", []) or []
+        substantial = sum(1 for c in agent_children if c not in ("README.md", ".gitkeep"))
+        if substantial >= 3:
+            score = max(score, 2)
+            reasons.append(".agent/ に複数 subdir → Gemini 系運用残存の可能性")
+    only_cursorrules = (
+        len([t for t in traces if t["depth"] == 1]) == 1
+        and ".cursorrules" in by_name
+    )
+    if only_cursorrules:
+        score = 1
+    level = {1: "低", 2: "中", 3: "高"}[score]
+    return level, reasons
+
+
+def _localize_classify_strategy(
+    traces: list[dict[str, Any]],
+    git_activity: dict[str, Any],
+    forced: str | None = None,
+) -> tuple[str, str, list[str]]:
+    """4 戦略 + escalate を意思決定木で判定する (docs/19 §4 戦略の意思決定木)。"""
+    if forced:
+        return forced, "high", [f"--strategy {forced} で強制指定"]
+    reasons: list[str] = []
+    substantive = [t for t in traces if not (t["category"] == "personal" and t["name"] == ".agentops")]
+    if not substantive:
+        return "greenfield", "high", ["痕跡なし → greenfield"]
+    if (
+        len(substantive) == 1
+        and substantive[0]["name"] == "AGENTS.md"
+        and (substantive[0].get("size_bytes") or 0) < 200
+    ):
+        return "greenfield", "high", ["AGENTS.md のみ最小 → greenfield"]
+    days_list = [t["mtime_days"] for t in substantive if t.get("mtime_days") is not None]
+    newest_days = min(days_list) if days_list else None
+    commits_30d = git_activity.get("commits_last_30d")
+    is_idle = commits_30d == 0
+    is_active = commits_30d is not None and commits_30d >= 1
+    conflict_level, conflict_reasons = _localize_assess_conflict(traces)
+    if newest_days is not None and newest_days >= 180 and is_idle:
+        reasons.append(f"newest trace {newest_days} 日前 + 30 日内 commit なし → 休止")
+        reasons.extend(conflict_reasons)
+        return "freeze", "high", reasons
+    has_substantial_dir = any(
+        t.get("kind") == "dir"
+        and t.get("category") in {"claude", "gemini", "personal"}
+        and len(t.get("children", []) or []) >= 3
+        for t in traces
+    )
+    if newest_days is not None and (
+        newest_days <= 30 or (newest_days <= 180 and has_substantial_dir)
+    ):
+        if is_active and conflict_level in {"中", "高"}:
+            reasons.append(
+                f"newest trace {newest_days} 日前 + 30 日内 commit {commits_30d} 件 + "
+                f"競合度 {conflict_level} → inventory-rebuild"
+            )
+            reasons.extend(conflict_reasons)
+            return "inventory-rebuild", "high", reasons
+    if conflict_level in {"低", "中"} and len(substantive) <= 3:
+        reasons.append(
+            f"競合度 {conflict_level} + 痕跡 {len(substantive)} 件 → coexistence (短命/プロト想定)"
+        )
+        reasons.extend(conflict_reasons)
+        return "coexistence", "medium", reasons
+    reasons.append("4 戦略どれにも明確に該当しない → user 確認 escalate")
+    reasons.extend(conflict_reasons)
+    return "needs-user-confirmation", "low", reasons
+
+
+_LOCALIZE_CHECKLISTS: dict[str, list[str]] = {
+    "greenfield": [
+        "グローバル `~/.claude/CLAUDE.md` / `~/.codex/AGENTS.md` を import する `CLAUDE.md` / `AGENTS.md` を作成",
+        "`.agentops/{plans,task-plans,tasks,handoffs,reviews,runs,archive,prompts}/` 構造を生成",
+        "`.agentops/archive/README.md` の table header を初期化",
+        "技術スタック固有の lint / test / build / deploy コマンドを project 側 docs に明記",
+        "AI auto-merge 許諾を project でも適用するか拒否するか CLAUDE.md / AGENTS.md に記載",
+    ],
+    "inventory-rebuild": [
+        "旧設計痕跡の inventory を `~/.claude/.agentops/runs/<run-id>/inventory.md` または対象 project の `.agentops/runs/` に書き出す",
+        "各要素を「移行」「廃棄」「温存」「保留」のいずれかに分類",
+        "移行: 新方針へ組み替え + diff レビュー",
+        "廃棄: 削除または `archive/` へ退避",
+        "温存: 新グローバルと共存できる根拠を docs に書く",
+        "保留: 次セッションへ handoff",
+        "グローバル設計改訂後の追従可能性を確保 (project 固有差分は `AGENTS.override.md` 等に集約)",
+    ],
+    "coexistence": [
+        "`.agentops/` 構造のみ追加 (旧 CLAUDE.md / AGENTS.md / GEMINI.md / `.codex` / `.claude/` / `.agent/` / `.ai/` / `.cursorrules` / `.cursor/` 等には触れない)",
+        "`.agentops/plans/current.md` の Context に「既存設計と共存しており、見直しは inventory-rebuild に切り替える時に再評価」と記載",
+        "グローバル設計改訂時の追従が薄くなる旨を CLAUDE.md / AGENTS.md に注記",
+    ],
+    "freeze": [
+        "既存ファイルに override notice (1-3 行) のみ追記:「本プロジェクトは凍結状態。グローバル設計改訂を反映する場合は本プロジェクトを `inventory-rebuild` で再起動する」",
+        "`.agentops/` は **追加しない** (休止プロジェクトに新規 dir を生やすと管理対象が増える)",
+        "次回再起動時に本 docs を再評価する旨を `~/.claude/.agentops/handoffs/` に残すかは ad-hoc 判断",
+    ],
+    "needs-user-confirmation": [
+        "本 report の判定軸 (痕跡有無 / 鮮度 / git activity / 競合度) を user が確認",
+        "user が 4 戦略のいずれかを `--strategy <name>` で強制指定するか、追加情報を加味して再判定",
+    ],
+}
+
+
+def _localize_render_report(
+    project: Path,
+    traces: list[dict[str, Any]],
+    stack: dict[str, Any],
+    git_activity: dict[str, Any],
+    strategy: str,
+    confidence: str,
+    reasoning: list[str],
+    run_id: str,
+    generated_at: str,
+    unlisted: list[dict[str, Any]] | None = None,
+) -> str:
+    """Markdown report (人間 + 機械可読) を生成する。"""
+    lines: list[str] = []
+    lines.append("# project-localize report")
+    lines.append("")
+    lines.append(f"- project: `{project}`")
+    lines.append(f"- generated_at: {generated_at}")
+    lines.append(f"- run_id: `{run_id}`")
+    lines.append(f"- strategy: **{strategy}**")
+    lines.append(f"- confidence: {confidence}")
+    lines.append("")
+    lines.append("## Inventory")
+    lines.append("")
+    if not traces:
+        lines.append("- (痕跡なし)")
+        lines.append("")
+    else:
+        by_cat: dict[str, list[dict[str, Any]]] = {}
+        for t in traces:
+            by_cat.setdefault(t["category"], []).append(t)
+        cat_titles = {
+            "claude": "Claude Code 系",
+            "codex": "Codex 系",
+            "gemini": "Gemini / 汎用 AI 系",
+            "other": "その他 (Cursor / Aider / Antigravity / Windsurf / Continue / Copilot 等)",
+            "personal": "本人標準 / agentops",
+        }
+        for cat in ("claude", "codex", "gemini", "other", "personal"):
+            entries = by_cat.get(cat)
+            if not entries:
+                continue
+            lines.append(f"### {cat_titles.get(cat, cat)}")
+            lines.append("")
+            for t in entries:
+                marker = " (0-byte marker)" if t.get("zero_byte_marker") else ""
+                size_str = f", {t['size_bytes']} bytes" if t.get("size_bytes") is not None else ""
+                age = f"{t['mtime_days']} 日前" if t.get("mtime_days") is not None else "鮮度不明"
+                lines.append(f"- `{t['path']}` ({t['kind']}{size_str}, {age}{marker})")
+                if t["kind"] == "dir" and t.get("children"):
+                    children_preview = ", ".join(t["children"][:10])
+                    if len(t["children"]) > 10:
+                        children_preview += ", ..."
+                    lines.append(f"  - children: {children_preview}")
+            lines.append("")
+    lines.append("## Tech stack")
+    lines.append("")
+    if stack["detected"]:
+        lines.append(f"- detected: {', '.join(stack['detected'])}")
+        for fname, val in stack["details"].items():
+            lines.append(f"  - `{fname}` → {val}")
+    else:
+        lines.append("- (技術スタック判定材料なし)")
+    lines.append("")
+    lines.append("## Git activity")
+    lines.append("")
+    if git_activity.get("is_git_repo"):
+        last = git_activity.get("last_commit_iso", "(unknown)")
+        last_days = git_activity.get("last_commit_days_ago")
+        last_str = f"{last} ({last_days} 日前)" if last_days is not None else last
+        lines.append(f"- last commit: {last_str}")
+        c30 = git_activity.get("commits_last_30d")
+        if c30 is not None:
+            lines.append(f"- commits in last 30 days: {c30}")
+    else:
+        lines.append("- (git repo ではない)")
+    lines.append("")
+    lines.append("## Freshness summary")
+    lines.append("")
+    days_list = [t["mtime_days"] for t in traces if t.get("mtime_days") is not None]
+    if days_list:
+        lines.append(f"- newest trace: {min(days_list)} 日前")
+        lines.append(f"- oldest trace: {max(days_list)} 日前")
+        bucket_counts: dict[str, int] = {}
+        for t in traces:
+            b = t.get("freshness", "unknown")
+            bucket_counts[b] = bucket_counts.get(b, 0) + 1
+        for b in ("≤30d", "31-180d", "180+d", "unknown"):
+            if b in bucket_counts:
+                lines.append(f"  - {b}: {bucket_counts[b]} 件")
+    else:
+        lines.append("- (鮮度判定可能な痕跡なし)")
+    lines.append("")
+    conflict_level, conflict_reasons = _localize_assess_conflict(traces)
+    lines.append("## Conflict assessment")
+    lines.append("")
+    lines.append(f"- conflict level: **{conflict_level}**")
+    if conflict_reasons:
+        for r in conflict_reasons:
+            lines.append(f"  - {r}")
+    else:
+        lines.append("  - (顕著な衝突なし)")
+    lines.append("")
+    lines.append(f"## Recommended strategy: {strategy}")
+    lines.append("")
+    lines.append("### Reasoning")
+    for r in reasoning:
+        lines.append(f"- {r}")
+    lines.append("")
+    lines.append("### Checklist")
+    for item in _LOCALIZE_CHECKLISTS.get(strategy, []):
+        lines.append(f"- [ ] {item}")
+    lines.append("")
+    lines.append("## Unlisted traces (docs/19 §検出網羅性)")
+    lines.append("")
+    if unlisted:
+        lines.append(
+            "未列挙の dot-dir / `<UPPERCASE>.md` / `.<vendor>rules` 候補を検出。"
+            "user 確認の上、AI 痕跡なら docs/19 §検出対象 inventory に追加してください。"
+        )
+        lines.append("")
+        for u in unlisted:
+            size_str = f", {u['size_bytes']} bytes" if u.get("size_bytes") is not None else ""
+            age = f"{u['mtime_days']} 日前" if u.get("mtime_days") is not None else "鮮度不明"
+            trigger = u.get("trigger", "?")
+            lines.append(f"- `{u['path']}` ({u['kind']}{size_str}, {age}, trigger: {trigger})")
+    else:
+        lines.append("- (未列挙 AI 痕跡候補は検出されず)")
+    return "\n".join(lines) + "\n"
+
+
+def localize(args: argparse.Namespace) -> int:
+    """agentops localize: 既存 project の AI 設計痕跡を inventory + 戦略推奨 (dry-run only)。"""
+    project = Path(args.project).expanduser().resolve()
+    if not project.exists():
+        raise AgentOpsError(f"--project path does not exist: {project}")
+    if not project.is_dir():
+        raise AgentOpsError(f"--project path is not a directory: {project}")
+
+    forced_strategy: str | None
+    if args.strategy and args.strategy != "auto":
+        forced_strategy = args.strategy
+    else:
+        forced_strategy = None
+
+    traces = _localize_scan_traces(project)
+    unlisted = _localize_detect_unlisted(project)
+    stack = _localize_detect_stack(project)
+    git_activity = _localize_git_activity(project)
+    strategy, confidence, reasoning = _localize_classify_strategy(
+        traces, git_activity, forced=forced_strategy
+    )
+
+    # 未列挙 AI 痕跡候補があれば user 確認 escalate (docs/19 §検出網羅性)。
+    # `--strategy <name>` で強制指定された場合は escalate を上書きしない。
+    if unlisted and forced_strategy is None:
+        strategy = "needs-user-confirmation"
+        confidence = "low"
+        reasoning.insert(
+            0,
+            f"未列挙 AI 痕跡候補 {len(unlisted)} 件を検出 → user 確認 escalate "
+            "(docs/19 §検出網羅性)",
+        )
+
+    generated_at = jst_timestamp()
+    project_slug = slug(project.name) or "project"
+    timestamp = jst_run_id_stamp()
+    run_id = sanitize_run_id(args.run_id) if args.run_id else f"{timestamp}-{project_slug}-localize"
+
+    report = _localize_render_report(
+        project=project,
+        traces=traces,
+        stack=stack,
+        git_activity=git_activity,
+        strategy=strategy,
+        confidence=confidence,
+        reasoning=reasoning,
+        run_id=run_id,
+        generated_at=generated_at,
+        unlisted=unlisted,
+    )
+
+    runs_root = (
+        Path(args.runs_root).expanduser()
+        if args.runs_root
+        else (Path.home() / ".claude" / ".agentops" / "runs")
+    )
+    run_dir = (runs_root / run_id).resolve()
+    try:
+        ensure_inside(runs_root.resolve(), run_dir, "--run-id")
+    except AgentOpsError:
+        raise
+    try:
+        run_dir.mkdir(parents=True, exist_ok=True)
+        (run_dir / "inventory.md").write_text(report, encoding="utf-8")
+    except OSError as exc:
+        raise AgentOpsError(f"failed to write run log to {run_dir}: {exc}") from exc
+
+    print(report, end="")
+    print(f"\n[localize] run log saved: {run_dir / 'inventory.md'}", file=sys.stderr)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """agentops CLI のサブコマンドと引数を定義する。"""
     parser = argparse.ArgumentParser(prog="agentops", description="AgentOps CLI wrapper")
@@ -1076,6 +1795,34 @@ def build_parser() -> argparse.ArgumentParser:
     archive_task_parser.add_argument("--dry-run", action="store_true")
     archive_task_parser.add_argument("--project", default=".")
     archive_task_parser.set_defaults(func=archive_task)
+
+    localize_parser = sub.add_parser(
+        "localize",
+        help="inventory existing project AI traces and recommend a localization strategy (dry-run)",
+    )
+    localize_parser.add_argument(
+        "--project", default=".", help="target project path (default: cwd)"
+    )
+    localize_parser.add_argument(
+        "--strategy",
+        choices=("auto", *LOCALIZE_STRATEGIES),
+        default="auto",
+        help="recommended strategy; 'auto' (default) uses the docs/19 decision tree",
+    )
+    localize_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="dry-run mode (default and only mode for now; --apply is future scope)",
+    )
+    localize_parser.add_argument(
+        "--run-id", help="explicit run id (default: <JST timestamp>-<project>-localize)"
+    )
+    localize_parser.add_argument(
+        "--runs-root",
+        default=None,
+        help="run log root (default: ~/.claude/.agentops/runs/); used by tests",
+    )
+    localize_parser.set_defaults(func=localize)
 
     return parser
 
