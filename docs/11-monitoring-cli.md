@@ -51,6 +51,19 @@ scripts/agentops-watch notify --kind daily --projects config/projects.yml
 
 旧 envvar `AGENTOPS_DISCORD_WEBHOOK_URL` は deprecated。新規 cron / 新規 hook では使用せず、上記 4 本立てへ移行する。互換性のため本 CLI は envvar 名を **kind の固定マッピング** で解決し、対象 envvar が未設定の場合は exit 2 で停止する (旧名へのフォールバックは行わない方針)。
 
+実反映前の動作確認は `--dry-run` で payload だけ生成し、Webhook へ送信させない:
+
+```sh
+# digest 系 dry-run (~/dev/ 配下プロジェクトの集計を payload 化)
+scripts/agentops-watch notify --kind daily --projects config/projects.yml --dry-run
+
+# ANT_TIME 系 dry-run (project / message を渡して embed payload を確認)
+scripts/agentops-watch notify --kind alert --message "smoke test" --dry-run
+scripts/agentops-watch notify --kind session-start --project /home/<user>/dev/<proj> --dry-run
+```
+
+cron / systemd timer / hook への組み込み雛形は [`config/cron.example`](../config/cron.example) と [`templates/claude/hooks/session-notify-stub.md`](../templates/claude/hooks/session-notify-stub.md) を参照する。
+
 ## 現在の実装範囲
 
 標準ライブラリだけで次を確認する。

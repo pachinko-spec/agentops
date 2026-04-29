@@ -27,17 +27,40 @@ Claude Code セッションの **開始 / 終了 / Stop failure / PermissionRequ
   --project "$CLAUDE_PROJECT_DIR" \
   >/dev/null 2>&1 || true
 
-# Stop (正常終了 → session-end / 異常終了 → stop-failure)
+# Stop (正常終了 → session-end)
 /home/<user>/agentops/scripts/agentops-watch notify \
   --kind session-end \
   --project "$CLAUDE_PROJECT_DIR" \
   >/dev/null 2>&1 || true
 
-# PermissionRequest 待ち
+# Stop (異常終了 → stop-failure。--message に失敗理由)
+/home/<user>/agentops/scripts/agentops-watch notify \
+  --kind stop-failure \
+  --project "$CLAUDE_PROJECT_DIR" \
+  --message "$STOP_REASON" \
+  >/dev/null 2>&1 || true
+
+# PermissionRequest 待ち (--message に承認待ち tool 名)
 /home/<user>/agentops/scripts/agentops-watch notify \
   --kind permission-wait \
   --project "$CLAUDE_PROJECT_DIR" \
   --message "$REQUESTED_TOOL" \
+  >/dev/null 2>&1 || true
+
+# 任意 alert (高リスク変更着手 / cross-review 完了 / その他)。--project は省略可。
+/home/<user>/agentops/scripts/agentops-watch notify \
+  --kind alert \
+  --message "started high-risk change: <summary>" \
+  >/dev/null 2>&1 || true
+
+# 緊急 alert (--bypass-rate-limit は --kind alert --priority high のみで許可)。
+# 連続乱発を避けるため、本当に高優先な事象のみで使う。Discord 側 rate-limit
+# (応答ヘッダ) は bypass できず CLI は常に尊重する。
+/home/<user>/agentops/scripts/agentops-watch notify \
+  --kind alert \
+  --priority high \
+  --bypass-rate-limit \
+  --message "URGENT: <summary>" \
   >/dev/null 2>&1 || true
 ```
 
