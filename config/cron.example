@@ -1,0 +1,55 @@
+# agentops-watch notify 用 cron 雛形 (実反映前のコメントつきサンプル)。
+#
+# このファイルは crontab に直接適用されません。実反映するには、必要な行を
+# `crontab -e` でユーザー crontab に **手動コピー** してください。実反映は別 plan
+# (B / C) のスコープで、本 sample は contract の証跡として残します。
+#
+# 設計思想は docs/18-notification-strategy.md、CLI 仕様は docs/11-monitoring-cli.md
+# を参照してください。
+#
+# ## 前提
+#
+# - timezone は host 設定 (`Asia/Tokyo`) を想定。systemd timer 派は `OnCalendar=` で
+#   同等表現にしてください。
+# - Webhook URL は kind 別の env (`DISCORD_WEBHOOK_URL_{DAILLY,WEEKLY,MONTHLY,ANT_TIME}`)
+#   から読みます。値はリポジトリに置かず、`~/.bashrc` などの shell profile で export
+#   してください。env 名は本ファイルでも参照しますが、env の **値 (実 URL)** を本ファイル
+#   に書かないこと。
+# - cron 経由の起動では env が引き継がれない場合があります。crontab の先頭に
+#   `BASH_ENV=$HOME/.bashrc` を入れるか、wrapper script で env を読み直してください。
+#
+# ## 例
+#
+#   # 朝 9:10 に DAILLY digest (~/dev/ 配下プロジェクトの未完了 task / handoff / dirty)
+#   # 10 9 * * * /home/<user>/agentops/scripts/agentops-watch notify \
+#   #   --kind daily --projects /home/<user>/agentops/config/projects.yml
+#
+#   # 月曜 9:45 に WEEKLY 集計
+#   # 45 9 * * 1 /home/<user>/agentops/scripts/agentops-watch notify \
+#   #   --kind weekly --projects /home/<user>/agentops/config/projects.yml
+#
+#   # 月初 11:00 に MONTHLY 集計 + archive サマリ
+#   # 0 11 1 * * /home/<user>/agentops/scripts/agentops-watch notify \
+#   #   --kind monthly --projects /home/<user>/agentops/config/projects.yml
+#
+# ## 動作確認 (実反映の前に)
+#
+#   scripts/agentops-watch notify --kind daily \
+#     --projects config/projects.yml --dry-run
+#   scripts/agentops-watch notify --kind weekly \
+#     --projects config/projects.yml --dry-run
+#   scripts/agentops-watch notify --kind monthly \
+#     --projects config/projects.yml --dry-run
+#
+# ## エラーハンドリング契約 (docs/18 §DbC との関係)
+#
+# - 対応 envvar 未設定時は CLI が exit 2 で停止します (silent skip しない)。
+# - HTTP 429 / 5xx / DNS / connect timeout 等のネットワークエラーは exit 2。
+# - HTTP 429 の Retry-After は `~/.cache/agentops-watch/anttime-rate.json` に記録され、
+#   次回 cron 起動で在效中なら ANT_TIME 系 kind は skip されます (digest kind は影響なし)。
+#
+# ## SECRET
+#
+# - Webhook URL を本ファイル (もしくは crontab の値) に **絶対に書かない**。env 経由のみ。
+# - cron 出力の stdout / stderr が mail として届く環境では、CLI 側は URL を log に出さない
+#   設計ですが、誤って `set -x` 等で展開されないよう wrapper には注意してください。
