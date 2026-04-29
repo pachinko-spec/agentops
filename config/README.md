@@ -19,4 +19,4 @@ secretやDiscord webhook URLはこのリポジトリに保存しません。Cont
 ## 注意
 
 - 正式な CLI/API model id は使用前に公式 docs で確認します。
-- `AGENTOPS_DISCORD_WEBHOOK_URL` などの secret は shell profile、direnv、OS secret、CI secret に置きます。
+- `DISCORD_WEBHOOK_URL_{DAILLY,WEEKLY,MONTHLY,ANT_TIME}`（kind 別 channel、詳細は [docs/18](../docs/18-notification-strategy.md)）などの secret は shell profile、direnv、OS secret、CI secret に置きます。旧 `AGENTOPS_DISCORD_WEBHOOK_URL` は deprecated です。
