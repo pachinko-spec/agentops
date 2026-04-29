@@ -6,6 +6,7 @@
 
 | 完了日 | plan-id | サマリ |
 |---|---|---|
+| 2026-04-30 | [agentops-monitor-digest-message](2026-04-30-agentops-monitor-digest-message/plan.md) | digest kind に --message (audit log field) 追加 + audit-*.sh × 3 を agentops-watch notify へ切替 |
 | 2026-04-30 | [agentops-monitor-kind-implementation](2026-04-29-agentops-monitor-kind-implementation/plan.md) | agentops-watch notify --kind 実装 + cron / hook 雛形 |
 | 2026-04-29 | [notification-strategy-and-project-localization](2026-04-29-notification-strategy-and-project-localization/plan.md) | Discord 通知戦略 docs (4 channel + ANT_TIME) と関連 catalog / templates 整備 (PR-B #58) + プロジェクトローカライズ戦略 docs (4 戦略意思決定木 + 主要 5 件 dry-run + skill 雛形) (PR-C 本 PR)。Codex cross-review PR-B 2 round / PR-C 4 round で全 P0/P1 反映済。 |
 | 2026-04-29 | [handoff-followups](2026-04-29-handoff-followups/plan.md) | 前 plan 2026-04-28-design-review-p0-p1 完了時の handoff 2 件を消化。task 01 で skill / workflow → rule 逆参照列追加 (cross-reference 双方向化、catalog 31+15 件)、task 02 で docs/10, 11 の DbC prose 12 箇所を docs/03 参照化 (docs/09 パターン適用、archive サブコマンドは bold heading 形式で仕様情報保持)。Codex 3 Round + AI auto-merge 6 件評価で全 PR 通過 (PR #54-56)。 |
