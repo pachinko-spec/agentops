@@ -125,27 +125,8 @@ scripts/agentops delegate --to claude --role smoke --effort xhigh --message "Ret
 
 通常環境で成功し、stdout が期待値どおりであることを `.agentops/runs/{run_id}/` に残す。sandbox 内の失敗 run がある場合は、通常環境での再実行結果と区別して報告する。
 
-## DbC
+## DbC との関係
 
-前提条件:
+`scripts/agentops` CLI wrapper は DbC のうち、別 CLI / 別モデルへの委譲とその実行記録の永続化層を機械的に支える。DbC 5 条件（前提・不変・完了・禁止・停止）の単一真ソースは [DbCと品質ゲート](03-dbc-and-quality-gates.md) であり、本章ではそれを **delegate / harness 文脈にどう適用するか** だけを記す。
 
-- `.agentops/runs/` に書き込める。
-- 実実行する場合は対象 CLI がインストール済みで、コマンドテンプレートが現在の仕様に合っている。
-- harness spec を使う場合は、参照先がプロジェクトローカルに存在し、setup、oracle、artifact 方針が読める。
-
-不変条件:
-
-- 依頼本文と実行結果を同じ `run_id` の下に保存する。
-- dry-run では外部 CLI を実行しない。
-- stdout/stderr を破棄しない。
-
-完了条件:
-
-- `status.json` と `result.md` が作成される。
-- 実実行では exit code が呼び出し元へ返る。
-
-停止条件:
-
-- CLI が見つからない。
-- timeout した。
-- 公式 docs と実コマンド仕様が合わない。
+CLI wrapper の適用範囲: `.agentops/runs/` に書き込め、対象 CLI がインストール済みで、コマンドテンプレートが現在の仕様に合っていること。harness spec を使う場合は、参照先がプロジェクトローカルに存在し、setup・oracle・artifact 方針が読めることが前提。実行中は依頼本文と実行結果を同じ `run_id` の下に保存し、dry-run では外部 CLI を実行せず、stdout/stderr を破棄しない。完了は `status.json` と `result.md` の作成（実実行では exit code を呼び出し元へ返す）まで。CLI が見つからない・timeout・公式 docs と実コマンド仕様の不整合があれば、wrapper をスキップせずに作業を停止し DbC 停止条件として扱う。

@@ -88,30 +88,11 @@ sources:
 
 警告だけの場合は cron 通知のため exit code 0 とする。
 
-## DbC
+## DbC との関係
 
-前提条件:
+`scripts/agentops-watch` 監視 CLI は DbC のうち、stuck run / dirty worktree / freshness 等の状態観測層を機械的に支える。DbC 5 条件の単一真ソースは [DbCと品質ゲート](03-dbc-and-quality-gates.md) であり、本章ではそれを **監視 CLI 文脈にどう適用するか** だけを記す。
 
-- 監視対象 `path` が存在する。
-- Git 情報を読む権限がある。
-- Discord 通知を実送信する場合、Webhook URL が環境変数にある。
-
-不変条件:
-
-- secret をリポジトリに保存しない。
-- 監視 CLI はプロジェクトのファイルを変更しない。
-- 警告とエラーを区別する。
-
-完了条件:
-
-- text または JSON の report を出力する。
-- dry-run 通知では送信 payload だけを表示する。
-
-停止条件:
-
-- 監視対象が存在しない。
-- Git コマンドが失敗する。
-- Discord webhook が未設定で実送信を求められた。
+監視 CLI の適用範囲: 監視対象 `path` が存在し、Git 情報を読む権限があり、Discord 通知を実送信する場合は Webhook URL が環境変数にあること。実行中は secret をリポジトリに保存せず、プロジェクトのファイルを変更せず、警告とエラーを区別する。完了は text または JSON の report 出力（dry-run 通知では送信 payload だけ表示）まで。監視対象不在・Git コマンド失敗・Discord webhook 未設定で実送信を求められた場合は監視 CLI をスキップせずに作業を停止し DbC 停止条件として扱う。
 
 ## archive サブコマンド
 
@@ -166,35 +147,11 @@ active plan-id は `.agentops/plans/current.md` の `> plan-id: \`<id>\`` 行か
 - `scripts/agentops archive` は明示的に呼ばれた時のみ `.agentops/` を変更する。pre-commit / pre-push hook では起動しない（ヒューマンエラーをマージ後に CLI 一発で解消する設計のため）。
 - 本 CLI は `--dry-run` を通じて差分確認できるので、自動化スクリプトから呼ぶ場合も `--dry-run` を先に走らせて確認する運用を推奨する。
 
-### DbC（archive サブコマンド）
+### DbC との関係（archive サブコマンド）
 
-前提条件:
+archive サブコマンドは [DbCと品質ゲート](03-dbc-and-quality-gates.md) を **CLI 固有の atomic write / preflight / path 検証の文脈に適用したもの**。CLI 動作仕様そのものに密着しているため、5 条件の具体内容は以下のとおり個別に展開する（docs/03 の汎用テンプレに含まれない実装制約を含む）。
 
-- `--task-id` 利用時に `.agentops/plans/current.md` が存在し、`> plan-id: \`<id>\`` 行から plan-id を一意に抽出できる。
-- `--plan-id` / 抽出された plan-id / `--task-id` がいずれも `^[A-Za-z0-9][A-Za-z0-9_.-]*$` を満たし `..` を含まない。
-- `--date` を指定する場合は `YYYY-MM-DD`。
-- `--summary` に改行を含めない。
-- 移動先（archive 配下の各 dst）が事前に存在しない。
-
-不変条件:
-
-- secret 値をログ・archive・README に書かない。
-- `archive/README.md` の既存 row は改変しない（先頭挿入のみ）。
-- `next-session.md` の本文（マニュアル記述部分）には触らない。
-- 部分書き込みで停止せず atomic write で完結する。
-- メタデータ更新（README row 挿入 / next-session.md 更新）は move 全件成功後に行う。
-
-完了条件:
-
-- 移動完了後、`.agentops/tasks/<basename>.md` または対象 plan のファイル群が archive 配下に存在する。
-- next-session.md の `entry_point` と（block 形式または inline 空配列 → 正規化後の block 形式の）`completed_tasks` が更新されている（task サブコマンドのみ）。
-- README.md table の先頭に新規 row が 1 行追加されている（plan サブコマンドのみ）。
-- exit code 0 で終了する。
-
-停止条件:
-
-- active plan-id が検出できない / 抽出値が DbC を満たさない（exit 2）。
-- 対象 task ファイルが存在しない（exit 2）。
-- `--plan-id` / `--task-id` / `--date` / `--summary` が検証に失敗（exit 2）。
-- 移動先が既に存在する（exit 2、preflight 失敗）。
-- `git mv` または `shutil.move` が失敗した（exit 2、stderr に元エラーを表示）。
+- **適用前提**: `--task-id` 利用時に `.agentops/plans/current.md` が存在し、`> plan-id: \`<id>\`` 行から plan-id を一意に抽出できる。`--plan-id` / 抽出された plan-id / `--task-id` がいずれも `^[A-Za-z0-9][A-Za-z0-9_.-]*$` を満たし `..` を含まない。`--date` を指定する場合は `YYYY-MM-DD`。`--summary` に改行を含めない。移動先（archive 配下の各 dst）が事前に存在しない。
+- **適用不変**: secret 値をログ・archive・README に書かない。`archive/README.md` の既存 row は改変しない（先頭挿入のみ）。`next-session.md` の本文（マニュアル記述部分）には触らない。部分書き込みで停止せず atomic write で完結する。メタデータ更新（README row 挿入 / next-session.md 更新）は move 全件成功後に行う。
+- **適用完了**: 移動完了後、`.agentops/tasks/<basename>.md` または対象 plan のファイル群が archive 配下に存在する。next-session.md の `entry_point` と（block 形式または inline 空配列 → 正規化後の block 形式の）`completed_tasks` が更新されている（task サブコマンドのみ）。README.md table の先頭に新規 row が 1 行追加されている（plan サブコマンドのみ）。exit code 0 で終了する。
+- **適用停止**: active plan-id が検出できない / 抽出値が DbC を満たさない（exit 2）。対象 task ファイルが存在しない（exit 2）。`--plan-id` / `--task-id` / `--date` / `--summary` が検証に失敗（exit 2）。移動先が既に存在する（exit 2、preflight 失敗）。`git mv` または `shutil.move` が失敗した（exit 2、stderr に元エラーを表示）。
