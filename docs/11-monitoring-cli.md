@@ -16,22 +16,40 @@ cron / systemd timer / 手動実行から呼び出す。
 
 ## コマンド
 
+> **実装ステータス注記**: 以下のうち `notify --kind <kind>` サブコマンドと kind 別 envvar マッピングは **契約段階** であり、本 docs と [docs/18](18-notification-strategy.md) に仕様だけが書かれている。`tools/agentops_monitor` 実装は現時点で旧 envvar `AGENTOPS_DISCORD_WEBHOOK_URL` のみ参照する `notify [--dry-run]` を提供しており、`--kind` を渡すと `unrecognized arguments: --kind` で exit 2 で停止する。実装本体は別 plan で本仕様 (kind / 4 channel / DbC) を満たす形で追加する。`check` と `archive` は実装済。
+
 ```text
 scripts/agentops-watch check --project .
 scripts/agentops-watch check --projects config/projects.yml --freshness config/freshness-sources.yml
 scripts/agentops-watch check --json
-scripts/agentops-watch notify --dry-run --projects config/projects.yml
+
+# notify の現行実装 (旧 envvar のみ、kind 未対応)
+scripts/agentops-watch notify [--dry-run] --projects config/projects.yml
+
+# notify の契約 (将来実装、別 plan で追加)
+scripts/agentops-watch notify --kind daily|weekly|monthly --projects config/projects.yml [--dry-run]
+scripts/agentops-watch notify --kind session-start|session-end --project <path>          [--dry-run]
+scripts/agentops-watch notify --kind permission-wait --project <path> --message <tool>   [--dry-run]
+scripts/agentops-watch notify --kind alert [--project <path>] --message <text>           [--dry-run]
+scripts/agentops-watch notify --kind stop-failure --project <path> --message <text>      [--dry-run]
 
 scripts/agentops archive plan --plan-id <id> --summary <text> [--date YYYY-MM-DD] [--include-runs] [--dry-run]
 scripts/agentops archive task --task-id <basename>                                                    [--dry-run]
 ```
 
-Discord 通知を実送信する場合は、Webhook URL を環境変数に置く。
+Discord 通知を実送信する場合は、kind 別に Webhook URL を環境変数に置く。設計思想と channel 区分は [通知戦略](18-notification-strategy.md) を参照する。
 
 ```sh
-export AGENTOPS_DISCORD_WEBHOOK_URL='https://discord.com/api/webhooks/...'
-scripts/agentops-watch notify --projects config/projects.yml
+# kind → envvar マッピング (本 CLI は env 名の固定マッピングを内部で持つ)
+export DISCORD_WEBHOOK_URL_DAILLY='https://discord.com/api/webhooks/...'    # --kind daily
+export DISCORD_WEBHOOK_URL_WEEKLY='https://discord.com/api/webhooks/...'    # --kind weekly
+export DISCORD_WEBHOOK_URL_MONTHLY='https://discord.com/api/webhooks/...'   # --kind monthly
+export DISCORD_WEBHOOK_URL_ANT_TIME='https://discord.com/api/webhooks/...'  # --kind session-* / permission-wait / alert / stop-failure
+
+scripts/agentops-watch notify --kind daily --projects config/projects.yml
 ```
+
+旧 envvar `AGENTOPS_DISCORD_WEBHOOK_URL` は deprecated。新規 cron / 新規 hook では使用せず、上記 4 本立てへ移行する。互換性のため本 CLI は envvar 名を **kind の固定マッピング** で解決し、対象 envvar が未設定の場合は exit 2 で停止する (旧名へのフォールバックは行わない方針)。
 
 ## 現在の実装範囲
 
@@ -46,7 +64,7 @@ scripts/agentops-watch notify --projects config/projects.yml
 - `.agentops/tasks/*.md` の未完了タスク数。完了済みtaskは `.agentops/archive/<plan-id>/tasks/` に移す
 - `.agentops/handoffs/` のハンドオフ数
 - `freshness-sources.yml` の `last_checked` と `max_age_days`
-- Discord webhook への digest 送信
+- Discord webhook への digest 送信 (channel と kind の対応は [通知戦略](18-notification-strategy.md) を参照)
 
 GitHub API、CI 詳細、reviewDecision、mergeable、package registry の取得は今後の拡張点とする。
 
@@ -92,7 +110,7 @@ sources:
 
 `scripts/agentops-watch` 監視 CLI は DbC のうち、stuck run / dirty worktree / freshness 等の状態観測層を機械的に支える。DbC 5 条件の単一真ソースは [DbCと品質ゲート](03-dbc-and-quality-gates.md) であり、本章ではそれを **監視 CLI 文脈にどう適用するか** だけを記す。
 
-監視 CLI の適用範囲: 監視対象 `path` が存在し、Git 情報を読む権限があり、Discord 通知を実送信する場合は Webhook URL が環境変数にあること。実行中は secret をリポジトリに保存せず、プロジェクトのファイルを変更せず、警告とエラーを区別する。完了は text または JSON の report 出力（dry-run 通知では送信 payload だけ表示）まで。監視対象不在・Git コマンド失敗・Discord webhook 未設定で実送信を求められた場合は監視 CLI をスキップせずに作業を停止し DbC 停止条件として扱う。
+監視 CLI の適用範囲: 監視対象 `path` が存在し、Git 情報を読む権限があり、Discord 通知を実送信する場合は kind に対応する Webhook URL (`DISCORD_WEBHOOK_URL_DAILLY` / `WEEKLY` / `MONTHLY` / `ANT_TIME`、設計は [通知戦略](18-notification-strategy.md)) が環境変数にあること。実行中は secret をリポジトリに保存せず、プロジェクトのファイルを変更せず、警告とエラーを区別する。完了は text または JSON の report 出力（dry-run 通知では送信 payload だけ表示）まで。監視対象不在・Git コマンド失敗・kind に対応する Discord webhook 未設定で実送信を求められた場合は監視 CLI をスキップせずに作業を停止し DbC 停止条件として扱う。旧 envvar `AGENTOPS_DISCORD_WEBHOOK_URL` は deprecated で本 CLI のフォールバック対象としない。
 
 ## archive サブコマンド
 
