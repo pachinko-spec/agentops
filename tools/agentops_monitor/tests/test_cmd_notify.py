@@ -102,6 +102,39 @@ class CmdNotifyDryRunTests(unittest.TestCase):
             self.assertEqual(rc, 0)
             urlopen.assert_not_called()
 
+    def test_dry_run_daily_with_message(self) -> None:
+        """digest kind が --message を受け付け audit log field として embed に乗せる (PR-C)。"""
+        rc, out, _ = self._run(
+            [
+                "notify", "--kind", "daily",
+                "--project", "/home/otaku/agentops",
+                "--message", "[sanity-check] OK",
+                "--dry-run",
+            ]
+        )
+        self.assertEqual(rc, 0)
+        payload = json.loads(out)
+        fields = payload["embeds"][0]["fields"]
+        # 末尾に audit log field が存在
+        self.assertEqual(fields[-1]["name"], "audit log")
+        self.assertEqual(fields[-1]["value"], "[sanity-check] OK")
+        # allowed_mentions は維持
+        self.assertEqual(payload["allowed_mentions"], {"parse": []})
+
+    def test_dry_run_weekly_no_message_unchanged(self) -> None:
+        """digest kind で --message 未指定なら audit log field を含まない (regression)。"""
+        rc, out, _ = self._run(
+            [
+                "notify", "--kind", "weekly",
+                "--project", "/home/otaku/agentops",
+                "--dry-run",
+            ]
+        )
+        self.assertEqual(rc, 0)
+        payload = json.loads(out)
+        names = [f["name"] for f in payload["embeds"][0]["fields"]]
+        self.assertNotIn("audit log", names)
+
     def test_dry_run_does_not_modify_rate_state(self) -> None:
         """dry-run は ANT_TIME rate-limit state を更新しない (preview の副作用回避)。"""
         state_path = Path(self.tmp.name) / "agentops-watch" / "anttime-rate.json"

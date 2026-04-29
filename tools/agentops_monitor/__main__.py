@@ -429,8 +429,19 @@ def _embed_envelope(embed: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def build_digest_embed(kind: str, report: dict[str, Any], now_jst: datetime) -> dict[str, Any]:
-    """daily / weekly / monthly digest 用 embed payload を構築する。"""
+def build_digest_embed(
+    kind: str,
+    report: dict[str, Any],
+    now_jst: datetime,
+    message: str | None = None,
+) -> dict[str, Any]:
+    """daily / weekly / monthly digest 用 embed payload を構築する。
+
+    `message` を渡すと embed の fields 末尾に `audit log` field として追加する。
+    audit-*.sh など外部 cron スクリプトが log の要約を embed に乗せるための拡張点。
+    Discord embed の field 上限 (25) と value 上限 (1024) は尊重する。message 指定時は
+    audit log field の枠を確保するため project field 数を最大 24 件に制限する。
+    """
     if kind == "daily":
         title = f"daily digest — {now_jst.strftime('%Y-%m-%d')}"
     elif kind == "weekly":
@@ -472,10 +483,27 @@ def build_digest_embed(kind: str, report: dict[str, Any], now_jst: datetime) -> 
             }
         )
 
+    # message があれば audit log field を末尾に追加する。
+    audit_log_field: dict[str, Any] | None = None
+    if message:
+        sanitized_message = sanitize_mention_text(message)
+        audit_log_field = {
+            "name": "audit log",
+            "value": _truncate(sanitized_message, _EMBED_FIELD_VALUE_LIMIT),
+            "inline": False,
+        }
+
+    if audit_log_field is not None:
+        # audit log field の枠を確保するため project fields は (上限 - 1) まで。
+        capped_fields = fields[: _EMBED_FIELDS_LIMIT - 1]
+        capped_fields.append(audit_log_field)
+    else:
+        capped_fields = fields[:_EMBED_FIELDS_LIMIT]
+
     embed: dict[str, Any] = {
         "title": _truncate(title, _EMBED_TITLE_LIMIT),
         "color": _EMBED_COLOR["digest"],
-        "fields": fields[:_EMBED_FIELDS_LIMIT],
+        "fields": capped_fields,
         "footer": {"text": f"agentops-watch / {now_jst.isoformat(timespec='seconds')}"},
     }
     return _embed_envelope(embed)
@@ -782,7 +810,9 @@ def cmd_notify(args: argparse.Namespace) -> int:
         except (FileNotFoundError, ValueError) as exc:
             print(f"error: {exc}", file=sys.stderr)
             return 2
-        payload = build_digest_embed(kind, report, now)
+        # digest kind では --message を任意 audit log として embed に乗せる
+        # (audit-*.sh 等の cron スクリプトが log 要約を渡す経路)。
+        payload = build_digest_embed(kind, report, now, message=args.message)
     else:
         project = ""
         branch = ""
