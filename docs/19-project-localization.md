@@ -189,22 +189,23 @@ language: ja
 [feature-delivery workflow] ← 実装着手
 ```
 
-## CLI 仕様 (将来実装、別 plan)
+## CLI 仕様 (実装済 / dry-run only、`--apply` は将来仕様)
 
-`agentops localize` サブコマンドを将来追加する。本 docs は仕様のみ規定し、実装は別 plan で扱う ([docs/10-cli-wrapper.md](10-cli-wrapper.md) の `localize` spec を参照)。
+`agentops localize` サブコマンドは `tools/agentops_cli/__main__.py` に **実装済** ([docs/10-cli-wrapper.md](10-cli-wrapper.md))。本 docs の検出対象 / 4 戦略意思決定木 / DbC を機械適用する。
 
 ```text
-scripts/agentops localize --project <path> [--dry-run] [--strategy auto|greenfield|inventory-rebuild|coexistence|freeze]
+scripts/agentops localize --project <path> [--dry-run] [--strategy auto|greenfield|inventory-rebuild|coexistence|freeze|needs-user-confirmation] [--run-id <id>] [--runs-root <path>]
 ```
 
-- `--dry-run` で痕跡 inventory + 推奨戦略を report 出力 (デフォルト)
-- `--strategy auto` で意思決定木により自動判定 (デフォルト)
+- `--dry-run` (既定、唯一の動作モード): 痕跡 inventory + 推奨戦略 + 戦略チェックリストを report 出力
+- `--strategy auto` (既定) で意思決定木により自動判定
 - `--strategy <name>` で戦略を強制指定 (緊急対応用)
+- 4 戦略どれにも明確に該当しない判定不能ケースは `needs-user-confirmation` で escalate (auto 推奨を強制しない)
 - 出力 (mode 別):
-  - `--dry-run` (既定): 対象 project には書き込まず、stdout に痕跡 inventory + 推奨戦略 + 戦略チェックリストを report 出力 + 該当 CLI のグローバル `.agentops/runs/<run-id>/inventory.md` (Claude Code: `~/.claude/.agentops/runs/`、Codex: `~/.codex/.agentops/runs/`) に保存
+  - `--dry-run` (既定): 対象 project には書き込まず、stdout に痕跡 inventory + 推奨戦略 + 戦略チェックリストを report 出力 + Claude Code 側グローバル `~/.claude/.agentops/runs/<run-id>/inventory.md` に保存 (`--runs-root` で test 等のために上書き可)
   - 承認後の本反映 (`--apply` 等、将来仕様): 対象 project の `.agentops/plans/current.md` 雛形を書き出し + グローバル run log 保存。dry-run と本反映の境界を CLI で明示し、誤って既存 project を書き換えない。
 
-実装本体は別 plan。skill `/agentops:localize` 経由で対話的に呼ぶ用途も想定 ([templates/claude/skill/agentops-localize/SKILL.md](../templates/claude/skill/agentops-localize/SKILL.md))。
+skill `/agentops:localize` 経由で対話的に呼ぶ用途も想定 ([templates/claude/skill/agentops-localize/SKILL.md](../templates/claude/skill/agentops-localize/SKILL.md))。skill の実体 (`~/.claude/skills/agentops-localize/`) は別 plan で生成。
 
 ## `project-localize` の DbC 適用
 

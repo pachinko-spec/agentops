@@ -6,6 +6,7 @@
 
 | 完了日 | plan-id | サマリ |
 |---|---|---|
+| 2026-04-30 | [agentops-localize-cli](2026-04-30-agentops-localize-cli/plan.md) | agentops localize CLI 実装 (痕跡 inventory + 4 戦略意思決定木 + 未列挙 escalate + report) |
 | 2026-04-30 | [agentops-monitor-digest-message](2026-04-30-agentops-monitor-digest-message/plan.md) | digest kind に --message (audit log field) 追加 + audit-*.sh × 3 を agentops-watch notify へ切替 |
 | 2026-04-30 | [agentops-monitor-kind-implementation](2026-04-29-agentops-monitor-kind-implementation/plan.md) | agentops-watch notify --kind 実装 + cron / hook 雛形 |
 | 2026-04-29 | [notification-strategy-and-project-localization](2026-04-29-notification-strategy-and-project-localization/plan.md) | Discord 通知戦略 docs (4 channel + ANT_TIME) と関連 catalog / templates 整備 (PR-B #58) + プロジェクトローカライズ戦略 docs (4 戦略意思決定木 + 主要 5 件 dry-run + skill 雛形) (PR-C 本 PR)。Codex cross-review PR-B 2 round / PR-C 4 round で全 P0/P1 反映済。 |

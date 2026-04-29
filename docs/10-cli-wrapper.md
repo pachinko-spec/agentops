@@ -27,7 +27,7 @@ scripts/agentops doctor
 scripts/agentops localize --project <path> [--dry-run] [--strategy auto|greenfield|inventory-rebuild|coexistence|freeze]
 ```
 
-> **実装ステータス注記**: `delegate` / `runs` / `doctor` は実装済 (`tools/agentops_cli/`)。`localize` サブコマンドは [プロジェクトローカライズ戦略](19-project-localization.md) で仕様だけ規定された **契約段階** で、`tools/agentops_cli/` 実装は未追加。実装本体は別 plan で扱う。
+> **実装ステータス注記**: `delegate` / `runs` / `doctor` / `archive` / `localize` は実装済 (`tools/agentops_cli/`)。`localize` は dry-run のみで、`--strategy auto` (既定) で docs/19 §4 戦略の意思決定木を機械適用し、判定不能ケースは `needs-user-confirmation` で escalate する。`--apply` (本反映) は将来仕様。
 
 ## 入力境界
 
