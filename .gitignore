@@ -24,3 +24,14 @@ htmlcov/
 # Claude Code runtime artifacts (ScheduleWakeup lockfile, plugin state cache).
 # Do not commit; recreated by the harness as needed.
 /.claude/
+
+# secret artifacts (P1-07)
+# Never commit credentials, API keys, signed certs, or local-only env files.
+.env
+.env.*
+*.key
+*.pem
+credentials*.json
+.dev.vars
+# NOTE: wrangler.toml itself is configuration (not secret). Do NOT ignore it.
+# Wrangler secrets must be set via `wrangler secret put`, never committed.

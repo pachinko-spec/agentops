@@ -1,0 +1,21 @@
+{
+  "retryOn429": true,
+  "retryCount": 3,
+  "fallbackRetryDelay": "30s",
+  "timeout": "20s",
+  "aliveStatusCodes": [200, 206, 999],
+  "ignorePatterns": [
+    {"pattern": "^http://localhost"},
+    {"pattern": "^https://example\\.com"},
+    {"pattern": "^https://github\\.com/[^/]+/[^/]+/issues/\\d+$"},
+    {"pattern": "^https://github\\.com/[^/]+/[^/]+/pull/\\d+$"}
+  ],
+  "httpHeaders": [
+    {
+      "urls": ["https://github.com/", "https://api.github.com/"],
+      "headers": {
+        "Accept": "text/html,application/xhtml+xml"
+      }
+    }
+  ]
+}
