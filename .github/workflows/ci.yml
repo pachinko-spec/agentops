@@ -101,11 +101,13 @@ jobs:
           shopt -s nullglob
           for f in ${DOCS_GLOB}; do
             [ -f "$f" ] || continue
-            # YAML frontmatter only: scan from leading '---' fence to the next '---' fence.
+            # YAML frontmatter only: opening '---' MUST be on line 1. closing '---' is the next fence.
             # blockquote form (^> next-review-by) is intentionally NOT accepted.
+            # If line 1 is not '---', the file has no frontmatter and next_by stays empty (→ missing).
             # awk extracts ^next_review_by: YYYY-MM-DD from inside the frontmatter block only.
             next_by=$(awk '
-              /^---[[:space:]]*$/ { fence++; if (fence == 2) exit; next }
+              NR == 1 && /^---[[:space:]]*$/ { fence = 1; next }
+              fence == 1 && /^---[[:space:]]*$/ { exit }
               fence == 1 && /^next_review_by:[[:space:]]*[0-9]{4}-[0-9]{2}-[0-9]{2}/ {
                 sub(/^next_review_by:[[:space:]]*/, "")
                 sub(/[[:space:]].*$/, "")
