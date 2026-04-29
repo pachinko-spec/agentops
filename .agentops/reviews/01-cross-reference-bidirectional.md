@@ -134,7 +134,49 @@ workflows/catalog.md:
 
 ## Round 2
 
-(Round 1 修正後の clean 確認)
+- run_id: `20260429t1534060900-01-cross-reference-bidirectional-r2`
+- run path: `.agentops/runs/20260429t1534060900-01-cross-reference-bidirectional-r2/`
+- exit_code: 0
+- started_at: 2026-04-29T15:34:06+09:00
+- completed_at: 2026-04-29T15:36:15+09:00
+
+### 所見サマリ
+
+- P0: 0 件
+- P1: 0 件 ← Round 1 P1 完全解消
+- P2: 0 件 ← Round 1 P2 (2 件) 完全解消
+- P3: 1 件 (Round 1 P3 採用の取りこぼし、本 update で解消)
+
+### Codex 所見原文
+
+> **Round 2 所見**
+>
+> P0: 0 件 / P1: 0 件 / P2: 0 件 / P3: 1 件
+>
+> **P3**: `.agentops/tasks/01-cross-reference-bidirectional.md:31` に、Round 1 P3 の古い文言「複数の場合は `/` 区切りで連結」が残っています。同ファイルの実行内容 5 は `:38` で「最も近い rule 1 件」に直っており、`.agentops/plans/current.md:64` も「最も近い rule のみ」に更新済みです。重大なブロッカーではありませんが、P3 採用の完全反映としては未完です。
+>
+> **確認結果**:
+>
+> - Round 1 P1: docs/17 §22-24 / §58-60 は整合済み。逆引きは catalog 側、frontmatter は前 plan task 04 済み、残課題も更新済み。
+> - Round 1 P2-1: docs/17、skills/catalog.md、workflows/catalog.md に代表選定の非相互性注記あり。文面の方針も一貫しています。
+> - Round 1 P2-2: task 状態と task-plan Phase 1 は Round 2 待ちの現況として整合しています。
+> - Round 1 P3: plans/current.md は反映済み。ただし上記 P3 の通り tasks/01 line 31 に旧文言が残存。
+> - workflow / docs に新規 P0/P1 は見当たりません。
+> - AGENTS.md / CLAUDE.md の auto-merge 6 件評価に対する P0/P1 残存は見当たりません。ただし CI run 25094418982 はリモート照会できておらず、ユーザー提示情報ベース。
+>
+> **検証**:
+>
+> - `git diff --check origin/main...HEAD`: OK
+> - `python3 -m compileall tools`: OK
+> - `python3 -m unittest discover -s tests`: 12 tests OK
+> - catalog table 列数: OK
+> - catalog の rule id: rules/catalog.md に存在、missing 0 件
+
+### 反映方針表 (Round 2)
+
+| 指摘 | 重大度 | 採否 | 対応内容 |
+|---|---|---|---|
+| tasks/01 §31 の「`/` 区切りで連結」が残漏れ | P3 | **採用** | §31 を「最も近い rule のみ採用」に修正、Round 1 P3 採用の完全反映 |
 
 ---
 

@@ -28,7 +28,7 @@
 ## 実行内容
 
 1. **判断 (Codex Round 1 投入時に明記)**:
-   - **代表 rule 1 件 vs 全件列挙**: 本 task では **代表 1 件、複数の場合は `/` 区切りで連結**（docs/17 の pattern と同様）。情報損失が懸念される場合は Codex Round 1 P1/P2 で指摘可能、その時点で全件列挙へ切り替え判断。
+   - **代表 rule 1 件 vs 全件列挙**: 本 task では **代表 1 件、複数候補がある場合も最も近い rule のみ採用**（docs/17 の pattern と同様）。情報損失が懸念される場合は Codex Round 1 P1/P2 で指摘可能、その時点で全件列挙へ切り替え判断。
    - **catalog vs docs/17 の責務分離**: docs/17 は「rule 起点の最小マッピング表」固定。catalog 側に逆参照列を追加し、責務分離を維持。
    - **frontmatter (last_reviewed) 追加**: 本 task ではスコープ外（catalog は frontmatter なしで運用、別 task 候補）。
    - **hook 列追加**: 本 task ではスコープ外（rule 経由で hook 到達可能、必要なら別 task）。
