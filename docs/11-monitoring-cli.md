@@ -16,22 +16,22 @@ cron / systemd timer / 手動実行から呼び出す。
 
 ## コマンド
 
-> **実装ステータス注記**: 以下のうち `notify --kind <kind>` サブコマンドと kind 別 envvar マッピングは **契約段階** であり、本 docs と [docs/18](18-notification-strategy.md) に仕様だけが書かれている。`tools/agentops_monitor` 実装は現時点で旧 envvar `AGENTOPS_DISCORD_WEBHOOK_URL` のみ参照する `notify [--dry-run]` を提供しており、`--kind` を渡すと `unrecognized arguments: --kind` で exit 2 で停止する。実装本体は別 plan で本仕様 (kind / 4 channel / DbC) を満たす形で追加する。`check` と `archive` は実装済。
+> **実装ステータス注記**: `notify --kind <kind>` サブコマンドと kind 別 envvar マッピング、ANT_TIME 頻度上限ガード、HTTP 429 / 5xx 停止条件は **実装済** ([docs/18](18-notification-strategy.md) §通知種別と §DbC との関係 / §ANT_TIME 頻度上限ガード を満たす)。`--kind` 未指定での旧 envvar `AGENTOPS_DISCORD_WEBHOOK_URL` への fallback path は **deprecated** で、stderr に deprecation 警告を出した上で動作する後方互換 path として残してある (将来撤去)。`check` と `archive` は実装済。`localize` は仕様のみ規定の **契約段階** ([docs/19](19-project-localization.md))。
 
 ```text
 scripts/agentops-watch check --project .
 scripts/agentops-watch check --projects config/projects.yml --freshness config/freshness-sources.yml
 scripts/agentops-watch check --json
 
-# notify の現行実装 (旧 envvar のみ、kind 未対応)
-scripts/agentops-watch notify [--dry-run] --projects config/projects.yml
-
-# notify の契約 (将来実装、別 plan で追加)
+# notify の現行 (kind 必須、4 channel)
 scripts/agentops-watch notify --kind daily|weekly|monthly --projects config/projects.yml [--dry-run]
 scripts/agentops-watch notify --kind session-start|session-end --project <path>          [--dry-run]
 scripts/agentops-watch notify --kind permission-wait --project <path> --message <tool>   [--dry-run]
-scripts/agentops-watch notify --kind alert [--project <path>] --message <text>           [--dry-run]
+scripts/agentops-watch notify --kind alert [--project <path>] --message <text>           [--dry-run] [--bypass-rate-limit]
 scripts/agentops-watch notify --kind stop-failure --project <path> --message <text>      [--dry-run]
+
+# notify の旧 path (deprecated、--kind 未指定時のみ動作、AGENTOPS_DISCORD_WEBHOOK_URL を参照)
+scripts/agentops-watch notify [--dry-run] --projects config/projects.yml
 
 scripts/agentops archive plan --plan-id <id> --summary <text> [--date YYYY-MM-DD] [--include-runs] [--dry-run]
 scripts/agentops archive task --task-id <basename>                                                    [--dry-run]
