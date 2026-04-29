@@ -85,27 +85,50 @@ workflows/catalog.md:
 
 ## Round 1
 
-- run_id: `<TBD on Round 1 投入時>`
-- run path: `.agentops/runs/<ts>-01-cross-reference-bidirectional/`
-- 実行: `scripts/agentops delegate --to codex --role review_frontier --effort high --input skills/catalog.md --run-id <ISO8601>+0900-01-cross-reference-bidirectional-r1 --message "<観点>"`
-- exit_code: <TBD>
+- run_id: `20260429t1527080900-01-cross-reference-bidirectional-r1`
+- run path: `.agentops/runs/20260429t1527080900-01-cross-reference-bidirectional-r1/`
+- 実行: `scripts/agentops delegate --to codex --role review_frontier --effort high --input skills/catalog.md --run-id 20260429T152708+0900-01-cross-reference-bidirectional-r1 --message "<観点 8 件>"`
+- exit_code: 0
+- started_at: 2026-04-29T15:27:08+09:00
+- completed_at: 2026-04-29T15:30:23+09:00
 
 ### 所見サマリ
 
-- P0: <TBD>
-- P1: <TBD>
-- P2: <TBD>
-- P3: <TBD>
+- P0: 0 件
+- P1: 1 件
+- P2: 2 件
+- P3: 1 件
 
 ### Codex 所見原文
 
-<TBD>
+> **Round 1 所見**
+>
+> **P1**: `docs/17-cross-reference.md:22` がまだ「skill / workflow から rule への逆引きは次 plan の handoff」と説明しており、同ファイル `:57` の「task 01 で実装済み」と矛盾しています。catalog 側で逆引きを扱う方針なら、22 行目は「docs/17 本表には skill/workflow 起点表を持たず、逆引きは catalog 側の `関連 rule（代表）` 列で扱う。複数候補の網羅は対象外」程度に更新した方がよいです。隣の 23 行目も frontmatter 既存状態と合わないため、同時に整理対象です。
+>
+> **P2**: 代表リンクが非相互になるケースが複数ありますが、その性質が明記されていません。例: docs/17 は `design-policy -> requirements-review` としていますが、`skills/catalog.md:13` の `requirements-review` は `planning-approval` へ戻ります。同様に `release-readiness` は docs/17 では `destructive-operation-policy` 側の代表ですが、`workflows/catalog.md:20` では `git-and-branch-policy` です。代表 1 件方式自体は運用上許容できますが、「相互リンクの完全一致は保証しない」と明記するか、docs/17 と catalog の代表選定を相互一致に寄せるかを決めた方が安全です。
+>
+> **P2**: `.agentops` 記録が PR 現況とずれています。`.agentops/tasks/01-cross-reference-bidirectional.md:6` は `状態: 未着手` のまま、`.agentops/task-plans/current.md:35` 以降も実装・PR・CI が未完了扱いです。記録ファイルも今回のスコープなので、少なくとも task 01 の実装済み範囲と CI green までの状態は更新しておくべきです。
+>
+> **P3**: `.agentops/tasks/01-cross-reference-bidirectional.md:31` と `.agentops/plans/current.md:64` に「複数なら `/` 区切り」と残っていますが、実装方針は「複数候補でも最も近い rule 1 件」です。将来の読み違い防止として文言を実装方針に合わせるとよいです。
+>
+> **検証結果**: `git diff --check` OK、rule id 機械検証は skill 31 件 / workflow 15 件で invalid 0、table 列数は全行 5 列、`python3 -m compileall tools` OK、`python3 -m unittest discover -s tests` は 12 tests OK。P0 はありません。現時点では P1 が残っているため Round 1 は clean ではありません。
 
 ### 反映方針表
 
 | 指摘 | 重大度 | 採否 | 対応内容 | 反映先 |
 |---|---|---|---|---|
-| <TBD> | | | | |
+| docs/17 §22 (スコープ) と §57 (残課題) の矛盾、§23 frontmatter 説明の古い記述 | **P1** | **採用** | §22 を「逆引きは catalog 側の `関連 rule（代表）` 列で扱う」に更新、§23 を「frontmatter は前 plan task 04 で追加済」に更新、§残課題 から「skill/workflow 逆参照」行を削除（実装済みのため）、代わりに「代表選定の相互一致」「catalog 側 frontmatter 追加」を残課題に追加 | `docs/17-cross-reference.md` §17-23 / §残課題 |
+| 代表選定の非相互性が明記されていない | P2 | **採用** | docs/17 §スコープ、skills/catalog.md / workflows/catalog.md の冒頭注記に「代表選定の非相互性」セクションを追加。「各方向で『最初に見るべき代表 1 件』を独立に選定、相互一致は保証しない、網羅性が必要なら両表 + rules/catalog.md 併読」を明記 | `docs/17-cross-reference.md` / `skills/catalog.md` / `workflows/catalog.md` 冒頭 |
+| .agentops 記録が PR 現況と未同期（状態: 未着手 / Phase 1 ⏳ など） | P2 | **採用** | tasks/01 §状態 を「進行中」、task-plans/current.md Phase 1 step 1.1-1.10a を ✅ に更新 | `.agentops/tasks/01-cross-reference-bidirectional.md` §6 / `.agentops/task-plans/current.md` Phase 1 |
+| tasks/01 §31 と plans/current.md §64 の「複数なら `/` 区切り」が実装方針と矛盾 | P3 | **採用** | 「最も近い rule 1 件」「最も近い rule のみ」に統一 | `.agentops/tasks/01-cross-reference-bidirectional.md` §実行内容 5 / `.agentops/plans/current.md` §8 R1 |
+
+### Codex の確認済み事項 (Round 1)
+
+- `git diff --check` OK
+- rule id 機械検証: skill 31 件 / workflow 15 件で invalid 0
+- table 列数: 全行 5 列で統一
+- `python3 -m compileall tools` exit 0
+- `python3 -m unittest discover -s tests` 12 tests OK
 
 ---
 

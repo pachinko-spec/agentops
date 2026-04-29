@@ -3,7 +3,7 @@
 > 親 plan: `2026-04-29-handoff-followups`
 > 旧 handoff: `.agentops/handoffs/2026-04-28-cross-reference-skill-workflow-side.md`
 > 優先度: 単独 task（前 plan task 06 の補完）
-> 状態: 未着手
+> 状態: 進行中（PR #54 push 済、Codex Round 1 で P1=1 採用反映後 Round 2 待ち）
 > 想定コスト: S–M（1h–半日）
 > 想定 PR ブランチ: `claude/handoff-followup-impl-01-cross-reference-bidirectional`
 > 依存: なし（前 plan task 06 は完了済み、frontmatter task 04 も完了で catalog 側の参照基盤が整っている）
@@ -35,7 +35,7 @@
 2. `skills/catalog.md` の各 skill 行に `関連 rule（代表）` 列を追加。
 3. `workflows/catalog.md` の各 workflow 行に `関連 rule（代表）` 列を追加。
 4. catalog 内の表ヘッダ・区切り行 (`|---|`) を skill / workflow 数に応じて整える。
-5. 列の値は rule id（rules/catalog.md の id 列値）を使い、複数なら `/` 区切り。対応 rule なしの場合は `—`。
+5. 列の値は rule id（rules/catalog.md の id 列値）を使い、**最も近い rule 1 件**を選定（複数候補がある場合も代表 1 件のみ。網羅は docs/17 と本表の併読で対応）。対応 rule なしの場合は `—`。
 
 ## 完了条件
 

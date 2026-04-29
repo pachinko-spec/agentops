@@ -3,6 +3,8 @@
 AI エージェントが Claude Code / Codex の仕様と対象プロジェクトに合わせて生成する workflow 候補です。
 
 > 関連表: workflow から代表 rule を辿る逆参照は本ファイルの「関連 rule（代表）」列、rule 起点で代表 skill / workflow / hook を辿る場合は [docs/17-cross-reference.md](../docs/17-cross-reference.md) を参照。
+>
+> **代表選定の非相互性**: 本ファイルの `workflow → rule（代表）` と docs/17 の `rule → workflow（代表）` は必ずしも相互一致しない（各方向で「最初に見るべき代表 1 件」を独立に選定）。網羅性が必要な場合は両表 + [rules/catalog.md](../rules/catalog.md) を併読する。
 
 | 候補名 | 用途 | 発火条件 | 主な出力先 | 関連 rule（代表） |
 | --- | --- | --- | --- | --- |

@@ -61,7 +61,7 @@
 
 | ID | リスク | 縮退案 |
 |---|---|---|
-| R1 | catalog 側の rule マッピングで「複数 rule に対応」と「代表 1 件」のどちらを採用するかで Codex から指摘 | 代表 1 件（複数なら `/` 区切り）で先行、Codex Round 1 P1/P2 採用で全件列挙に切り替え |
+| R1 | catalog 側の rule マッピングで「複数 rule に対応」と「代表 1 件」のどちらを採用するかで Codex から指摘 | 代表 1 件（最も近い rule のみ）で先行、Codex Round 1 P1/P2 採用で全件列挙に切り替え |
 | R2 | docs/10, 11 の DbC prose 削除で CLI 仕様情報が失われる懸念 | 関係文 + docs/03 参照リンク + 1 段適用 prose に再構成（docs/09 と同じパターン） |
 | R3 | catalog.md の link が markdown-link-check で fail | rule 名の anchor link を相対パスで生成、CI で検証 |
 | R4 | レビュー 2 周超え | CLAUDE.md ループ防止ルールで統合判断 / user 確認 |
