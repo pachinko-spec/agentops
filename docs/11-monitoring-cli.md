@@ -16,7 +16,7 @@ cron / systemd timer / 手動実行から呼び出す。
 
 ## コマンド
 
-> **実装ステータス注記**: `notify --kind <kind>` サブコマンドと kind 別 envvar マッピング、ANT_TIME 頻度上限ガード、HTTP 429 / 5xx 停止条件は **実装済** ([docs/18](18-notification-strategy.md) §通知種別と §DbC との関係 / §ANT_TIME 頻度上限ガード を満たす)。`--kind` 未指定での旧 envvar `AGENTOPS_DISCORD_WEBHOOK_URL` への fallback path は **deprecated** で、stderr に deprecation 警告を出した上で動作する後方互換 path として残してある (将来撤去)。`check` と `archive` は実装済。`localize` は仕様のみ規定の **契約段階** ([docs/19](19-project-localization.md))。
+> **実装ステータス注記**: `notify --kind <kind>` サブコマンドと kind 別 envvar マッピング、ANT_TIME 頻度上限ガード、HTTP 429 / 5xx 停止条件、digest kind の任意 `--message` (audit log として embed field に追加) は **実装済** ([docs/18](18-notification-strategy.md) §通知種別と §DbC との関係 / §ANT_TIME 頻度上限ガード を満たす)。`--kind` 未指定での旧 envvar `AGENTOPS_DISCORD_WEBHOOK_URL` への fallback path は **deprecated** で、stderr に deprecation 警告を出した上で動作する後方互換 path として残してある (将来撤去)。`check` と `archive` は実装済。`localize` は仕様のみ規定の **契約段階** ([docs/19](19-project-localization.md))。
 
 ```text
 scripts/agentops-watch check --project .
@@ -24,10 +24,10 @@ scripts/agentops-watch check --projects config/projects.yml --freshness config/f
 scripts/agentops-watch check --json
 
 # notify の現行 (kind 必須、4 channel)
-scripts/agentops-watch notify --kind daily|weekly|monthly --projects config/projects.yml [--dry-run]
+scripts/agentops-watch notify --kind daily|weekly|monthly --projects config/projects.yml [--message <text>] [--dry-run]
 scripts/agentops-watch notify --kind session-start|session-end --project <path>          [--dry-run]
 scripts/agentops-watch notify --kind permission-wait --project <path> --message <tool>   [--dry-run]
-scripts/agentops-watch notify --kind alert [--project <path>] --message <text>           [--dry-run] [--bypass-rate-limit]
+scripts/agentops-watch notify --kind alert [--project <path>] --message <text>           [--dry-run] [--priority high [--bypass-rate-limit]]
 scripts/agentops-watch notify --kind stop-failure --project <path> --message <text>      [--dry-run]
 
 # notify の旧 path (deprecated、--kind 未指定時のみ動作、AGENTOPS_DISCORD_WEBHOOK_URL を参照)
@@ -57,10 +57,18 @@ scripts/agentops-watch notify --kind daily --projects config/projects.yml
 # digest 系 dry-run (~/dev/ 配下プロジェクトの集計を payload 化)
 scripts/agentops-watch notify --kind daily --projects config/projects.yml --dry-run
 
+# digest 系 + 任意 audit log (cron スクリプトから log の要約を embed に乗せる)
+scripts/agentops-watch notify --kind weekly --projects config/projects.yml \
+  --message "[sanity-check] critical: 0, deprecated: 2" --dry-run
+
 # ANT_TIME 系 dry-run (project / message を渡して embed payload を確認)
 scripts/agentops-watch notify --kind alert --message "smoke test" --dry-run
 scripts/agentops-watch notify --kind session-start --project /home/<user>/dev/<proj> --dry-run
 ```
+
+digest kind の `--message` は任意の自由テキストを受け取り、embed の末尾に `audit log`
+field として追加する (1024 文字 truncate + mention sanitize)。audit-*.sh などの cron
+スクリプトが log の要約を埋め込む経路として使う。
 
 cron / systemd timer / hook への組み込み雛形は [`config/cron.example`](../config/cron.example) と [`templates/claude/hooks/session-notify-stub.md`](../templates/claude/hooks/session-notify-stub.md) を参照する。
 

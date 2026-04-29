@@ -109,6 +109,61 @@ class BuildDigestEmbedTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             build_digest_embed("alert", self._report(), _NOW)
 
+    # --- --message 拡張のテスト (PR-C で追加) ---
+
+    def test_message_added_to_embed_fields(self) -> None:
+        """--message が "audit log" field として末尾に追加される。"""
+        payload = build_digest_embed("daily", self._report(), _NOW, message="[smoke] OK")
+        fields = payload["embeds"][0]["fields"]
+        self.assertEqual(fields[-1]["name"], "audit log")
+        self.assertEqual(fields[-1]["value"], "[smoke] OK")
+        # project field も維持されている
+        self.assertTrue(any(f["name"].startswith("project:") for f in fields))
+
+    def test_message_sanitized_in_digest(self) -> None:
+        """--message に含まれる @everyone / <@id> 等が無害化される。"""
+        payload = build_digest_embed(
+            "weekly", self._report(), _NOW, message="ping @everyone <@123456> now"
+        )
+        audit_field = payload["embeds"][0]["fields"][-1]
+        self.assertEqual(audit_field["name"], "audit log")
+        self.assertNotIn("@everyone", audit_field["value"])
+        self.assertNotIn("<@123456>", audit_field["value"])
+
+    def test_message_truncated_to_1024(self) -> None:
+        """1024 文字を超える message は末尾が省略される。"""
+        long_msg = "x" * 2000
+        payload = build_digest_embed("monthly", self._report(), _NOW, message=long_msg)
+        audit_field = payload["embeds"][0]["fields"][-1]
+        self.assertLessEqual(len(audit_field["value"]), 1024)
+        # truncate 表記 "…" が末尾に付く
+        self.assertTrue(audit_field["value"].endswith("…"))
+
+    def test_no_message_preserves_existing_shape(self) -> None:
+        """message 無しは "audit log" field を含めない (regression test)。"""
+        payload = build_digest_embed("daily", self._report(), _NOW)
+        fields = payload["embeds"][0]["fields"]
+        names = [f["name"] for f in fields]
+        self.assertNotIn("audit log", names)
+        # 元の project field は残る
+        self.assertTrue(any(n.startswith("project:") for n in names))
+
+    def test_empty_message_treated_as_no_message(self) -> None:
+        """空文字 message も "audit log" field を作らない。"""
+        payload = build_digest_embed("daily", self._report(), _NOW, message="")
+        names = [f["name"] for f in payload["embeds"][0]["fields"]]
+        self.assertNotIn("audit log", names)
+
+    def test_message_reserves_slot_when_at_field_limit(self) -> None:
+        """既存 project が 25 件あっても message 指定時は 24 + audit log = 25 になる。"""
+        report = self._report()
+        # 30 個の同一 project で fields 上限超過状態にする
+        report["projects"] = [report["projects"][0]] * 30
+        payload = build_digest_embed("daily", report, _NOW, message="[smoke] cap")
+        fields = payload["embeds"][0]["fields"]
+        self.assertLessEqual(len(fields), 25)
+        self.assertEqual(fields[-1]["name"], "audit log")
+
 
 class BuildAnttimeEmbedTests(unittest.TestCase):
     def test_session_start_includes_project_branch(self) -> None:
