@@ -1,97 +1,169 @@
-# task-plan: task 08 (P1-07) — 最小 CI + .gitignore secret 拡張子追加
+# task-plan: task 09 (P1-08) — AGENTS.md 一本化、CLAUDE.md は @AGENTS.md import + 差分のみ
 
 > 親 plan: `2026-04-28-design-review-p0-p1`
-> 親 task: `.agentops/tasks/08-p1-07-ci-and-gitignore.md`
+> 親 task: `.agentops/tasks/09-p1-08-agents-md-unify.md`
 > session: 2026-04-29
-> branch: `claude/design-review-impl-p1-07`
-> 想定 PR 構成: 実装 PR + archive ドッグフード PR の 2 PR
+> branch: `claude/design-review-impl-p1-08`
+> 想定 PR 構成: 実装 PR + archive ドッグフード PR の 2 PR (本 task は plan 完了 task のため archive ドッグフード PR で plan archive を実行)
+
+---
+
+## 着手前の仕様確認 (task 09 §実行内容 1 必須)
+
+### Claude Code: `@AGENTS.md` import 仕様 (`code.claude.com/docs/en/memory`)
+
+公式 docs `### AGENTS.md` セクションより:
+
+> Claude Code reads `CLAUDE.md`, not `AGENTS.md`. If your repository already uses `AGENTS.md` for other coding agents, create a `CLAUDE.md` that imports it so both tools read the same instructions without duplicating them. You can also add Claude-specific instructions below the import. Claude loads the imported file at session start, then appends the rest:
+>
+> ```markdown CLAUDE.md
+> @AGENTS.md
+>
+> ## Claude Code
+>
+> Use plan mode for changes under `src/billing/`.
+> ```
+
+import 仕様 (`### Import additional files`):
+
+- `@path/to/import` 構文。相対パスは「import を含むファイル基準」(working directory ではない)
+- 再帰的 import 可、最大 5 hops
+- 初回 import 時に approval dialog (decline すると永続的に disable)
+
+→ **本 task のパターン (CLAUDE.md = `@AGENTS.md` + Claude 固有差分) は公式推奨そのもの**。互換性問題なし。
+
+### Codex CLI: `AGENTS.md` 連結読込仕様 (`developers.openai.com/codex/guides/agents-md`)
+
+3 スコープ:
+
+1. **Global**: `~/.codex/AGENTS.md` (または `AGENTS.override.md`、`CODEX_HOME` 環境変数優先)
+2. **Project**: project root から cwd まで walk down、各 directory で `AGENTS.override.md` → `AGENTS.md` → `project_doc_fallback_filenames` の順
+3. **Current/nested**: 各 directory の AGENTS.md/AGENTS.override.md を確認
+
+挙動:
+
+- root 側から順に concat、blank line で join
+- `Files closer to your current directory override earlier guidance because they appear later in the combined prompt.`
+- 各 directory 1 ファイルのみ
+- `project_doc_max_bytes` (default 32 KiB) で停止
+- 空ファイルはスキップ、cwd で停止
+
+→ 本 task のパターン (project root に `AGENTS.md` 真ソース) は仕様通り。`AGENTS.override.md` は本 task で導入しない（必要時に user 個別運用）。
+
+### 互換性結論
+
+両 CLI で `AGENTS.md` 真ソース化 + `CLAUDE.md` の `@AGENTS.md` import + Claude 固有差分 のパターンが成立。**本 task を保留する理由なし**。
 
 ---
 
 ## フェーズ別実行計画
 
-### Phase 1: 実装（着手済）
+### Phase 1: 着手前確認の記録
 
 | step | 内容 | 状態 |
 |---|---|---|
-| 1.1 | `.gitignore` 末尾に secret 拡張子 6 行 + コメント追記 | ✅ 完了 |
-| 1.2 | `.github/workflows/ci.yml` 新規（actionlint / yamllint / markdown-link-check / freshness-check の 4 job） | ✅ 完了 |
-| 1.3 | `.github/markdown-link-check.json` 新規（rate limit 対策） | ✅ 完了 |
-| 1.4 | `.github/PULL_REQUEST_TEMPLATE.md` 新規（DbC 5 条件 + auto-merge 6 件 checklist） | ✅ 完了 |
-| 1.5 | `.agentops/task-plans/current.md` 新規（本ファイル） | ✅ 完了 |
-| 1.6 | `.agentops/reviews/p1-07.md` 新規 | ✅ 完了 (Round 1 投入前は枠のみ、各 Round 後に転記) |
+| 1.1 | `.agentops/reviews/p1-08.md` 新規（着手前仕様確認結果） | ✅ 完了 (本 task-plan §着手前の仕様確認 と整合) |
+| 1.2 | `.agentops/task-plans/current.md` 新規（本ファイル） | ✅ 完了 |
 
-### Phase 2: ローカル smoke
+### Phase 2: AGENTS.md 真ソース化（≤ 200 行）
 
 | step | 内容 | 状態 |
 |---|---|---|
-| 2.1 | `python3 -c "import yaml; yaml.safe_load(...)"` で workflow YAML 構文検証 | ✅ pass |
-| 2.2 | `json.load` で markdown-link-check.json 検証 | ✅ pass |
-| 2.3 | freshness-check Python 等価実装で `docs/[0-9]*.md` 18 件 stale=0 / missing=0 確認 | ✅ pass |
-| 2.4 | `python3 -m compileall tools` exit 0 | ✅ pass |
-| 2.5 | `python3 -m unittest discover -s tests` 12/12 pass | ✅ pass |
-| 2.6 | actionlint binary ローカル実行 | ❌ permission denied、CI 側で確認 |
-| 2.7 | yamllint ローカル実行 | ❌ pip 不可、CI 側で確認 |
-| 2.8 | markdown-link-check ローカル実行 | ❌ npm install スキップ、CI 側で確認 |
+| 2.1 | `AGENTS.md` 1 行目 / intro を中立化（Claude Code / Codex 並列） | ✅ |
+| 2.2 | §記録先: `~/.claude/` / `~/.codex/` を並列記述 | ✅ |
+| 2.3 | §global 設定を触る作業: 章名を中立化、CLI specific 確認方法を並列記述 | ✅ |
+| 2.4 | §Git と作業ブランチ: branch prefix を「Claude Code: `claude/`、Codex: `codex/`」並列記述 | ✅ |
+| 2.5 | §AI auto-merge: 主 orchestrator を「Claude Code / Codex いずれの場合も」、cross-review §reviewer は主 orchestrator と別系列 (Round 1 P1 反映) | ✅ |
 
-> note: ローカル env 制約により actionlint / yamllint / markdown-link-check の手元実行は不可。
-> CI 自体が初回 PR で 4 job を回すため、push 直後の Actions 結果で fail を検知して修正する方針へ切替。
+### Phase 3: CLAUDE.md 短縮版（≤ 50 行）
 
-### Phase 3: PR #1 push & GitHub Actions green 確認
+| step | 内容 | 状態 |
+|---|---|---|
+| 3.1 | 1 行目に `@AGENTS.md` を配置（公式推奨）| ✅ |
+| 3.2 | Claude Code 固有差分セクション (パス・確認コマンド・branch prefix のみ) を追記 | ✅ |
+| 3.3 | 行数確認 ≤ 50 | ✅ (21 行) |
+| 3.4 | Codex 固有 project 差分の置き場を AGENTS.md 内 / AGENTS.override.md に明示 (Round 1 P2 反映) | ✅ |
 
-| step | 内容 |
-|---|---|
-| 3.1 | commit (.gitignore / workflow / config / template / task-plan / review skeleton) |
-| 3.2 | push → PR 作成（auto-merge 6 件 checklist を本文に含める） |
-| 3.3 | Actions tab で 4 job の結果確認。fail なら修正 commit を push |
-| 3.4 | freshness-check job summary が `All docs are fresh` を出すことを確認 |
-
-### Phase 4: Codex cross-review（3 Round）
+### Phase 4: ローカル smoke
 
 | step | 内容 |
 |---|---|
-| 4.1 | Round 1: `scripts/agentops delegate --to codex --role review_frontier --effort high --input .github/workflows/ci.yml --run-id <ts>+0900-p1-07-r1 --message <観点 9 件>` |
-| 4.2 | 所見を `.agentops/reviews/p1-07.md` Round 1 セクションに転記、P0/P1 反映 |
-| 4.3 | Round 2: 修正後の clean 確認 |
-| 4.4 | Round 3: 確認専用、`no further P0/P1` |
+| 4.1 | `wc -l AGENTS.md CLAUDE.md` で行数 ≤ 200 / ≤ 50 確認 |
+| 4.2 | `python3 -m compileall tools` exit 0 |
+| 4.3 | `python3 -m unittest discover -s tests` 12/12 pass |
+| 4.4 | `git diff --check` clean |
+| 4.5 | `grep -c "^## " AGENTS.md` で章数確認、CLAUDE.md は import + 1-2 章のみ |
 
-### Phase 5: AI auto-merge 6 件評価 → squash merge
+### Phase 5: PR 作成 → CI green 確認
 
-CLAUDE.md §許諾条件 6 件を独立評価。全 OK なら `gh pr merge --squash --delete-branch`。
+GitHub Actions の 4 job (actionlint / yamllint / markdown-link-check / freshness-check) が全 pass。markdown-link-check は AGENTS.md / CLAUDE.md 内の link を検証。
 
-### Phase 6: main 同期 & PR #2 (archive ドッグフード)
+### Phase 6: Codex cross-review 3 Round
+
+`scripts/agentops delegate --to codex --role review_frontier --effort high --input AGENTS.md --run-id <ts>+0900-p1-08-r1` で Round 1。観点:
+
+1. AGENTS.md が Codex 真ソースとして必要十分（≤ 200 行、≤ 32 KiB project_doc_max_bytes）
+2. CLAUDE.md の `@AGENTS.md` import + Claude 固有差分が公式 docs パターンに整合
+3. 共通章を AGENTS.md に集約、CLI 固有名詞を中立化（並列記述または使用中 CLI 表記）
+4. AI auto-merge 主 orchestrator が「Claude Code / Codex いずれの場合も」になっているか
+5. config/claude/CLAUDE.md / config/codex/AGENTS.md の対称運用維持（本 task では touch しない）が DbC §触ってよい範囲 から逸脱しないか
+6. CLAUDE.md ≤ 50 行 / AGENTS.md ≤ 200 行 目安遵守
+7. 既存の章立て（位置づけ / 記録先 / global / Git / 完了 / 停止 / auto-merge）が両 CLI で意味的に同等か
+8. branch prefix 「Claude: `claude/`、Codex: `codex/`」記述で本 task の implementation branch (`claude/design-review-impl-p1-08`) と整合
+
+Round 2 で clean 確認、Round 3 で `no further P0/P1`。
+
+### Phase 7: AI auto-merge 6 件評価 → squash merge
+
+CLAUDE.md / AGENTS.md §許諾条件を独立評価。全 OK なら `gh pr merge <PR_NUMBER> --squash --delete-branch`（本 task では PR #52）。
+
+### Phase 8: main 同期 + archive ドッグフード PR (plan 全体 archive)
 
 | step | 内容 |
 |---|---|
-| 6.1 | `git checkout main && git fetch origin && git pull --ff-only origin main` |
-| 6.2 | `git checkout -b claude/archive-task-08-p1-07-ci-and-gitignore-dogfood` |
-| 6.3 | `scripts/agentops archive task --task-id 08-p1-07-ci-and-gitignore --dry-run` → 本番 |
-| 6.4 | `git add .agentops/prompts/next-session.md`（PR #32 既知制約） |
-| 6.5 | `next-session.md` 本文を task 08 セッション内容で書き直し（手動） |
-| 6.6 | PR #2 作成 → self-merge → main 同期確認 |
+| 8.1 | `git checkout main && git fetch origin && git pull --ff-only origin main` |
+| 8.2 | `git checkout -b claude/archive-task-09-p1-08-agents-md-unify-dogfood` |
+| 8.3 | `scripts/agentops archive task --task-id 09-p1-08-agents-md-unify --dry-run` → 本番 |
+| 8.4 | tasks/ 残ゼロ → user 確認: prompts/next-session.md 削除？ |
+| 8.5 | **plan 全体完了** → `scripts/agentops archive plan --plan-id 2026-04-28-design-review-p0-p1 --summary "<text>"` で plan 全体 archive + archive/README.md table 挿入 |
+| 8.6 | PR #2 作成 → self-merge → main 同期確認 |
 
 ---
 
-## 過去 task 04 Round 1 P3 申し送りの反映確認
+## 不変条件 (task 09 §不変条件)
 
-- ✅ freshness-check の grep を `^next_review_by:` に絞り、blockquote 形式 (`^> next-review-by`) を OR で許容しない（ci.yml L97 のコメントで明示）
-- ✅ 検証スクリプト側では `rg --files-without-match` を使う方針（`rg -L` は `--follow` のため未一致列挙には使わない）
+- AGENTS.md / CLAUDE.md の意味（プロジェクト指示の責務）を変えない
+- Claude Code でも Codex でも読み込めること（両 CLI の動作確認必須 → 着手前確認で完了、Round 1 でも再確認）
+- `~/.claude/CLAUDE.md` への影響は config/claude/CLAUDE.md 雛形までで、本 plan では実反映しない
+- AGENTS.md ≤ 200 行 / CLAUDE.md ≤ 50 行を目安
 
-## 想定リスクと縮退（plan/risks より）
+## 触ってよい範囲
 
-| ID | 状態 |
-|---|---|
-| R1: yamllint で既存 config fail | inline config に `comments-indentation: disable` 追加で予防的対応 |
-| R2: markdown-link-check 外部 false positive | `.github/markdown-link-check.json` で retry / aliveStatusCodes / ignorePatterns 設定済み |
-| R3: 無料枠超過 | public repo 想定（無料無制限）、コスト試算は p1-07.md に記録 |
-| R4: PR #1 自身の CI 初回 fail | ローカル smoke で YAML/JSON/freshness-check ロジックを事前確認、push 直後に green 確認 |
-| R5: Round 2 で P0/P1 新規発生 | 3 周目修正に入らず統合判断 / user 確認 |
-| R6: archive CLI の next-session.md unstaged | PR #2 で `git add` 明示 |
-| R7: `.dev.vars` 衝突 | コメントで「Wrangler local dev secrets」と用途明示済み |
+- ルート `CLAUDE.md`、`AGENTS.md`
+- `.agentops/reviews/p1-08.md` 新規
+- `.agentops/task-plans/current.md` 新規 (本ファイル)
+
+## 触らない範囲（本 task でスコープ外）
+
+- `config/claude/CLAUDE.md` / `config/codex/AGENTS.md`: グローバル雛形は `~/` から見て `@AGENTS.md` import が解決できないため、本 task の戦略 (import + 差分) が適用不可。**対称運用維持**で次 plan 検討。Codex Round で意見もらう
+- `docs/00-17` 本文と既存 frontmatter
+- `scripts/`、`tools/`、`templates/` 本文
+- `archive/`
+
+## 想定リスクと縮退
+
+| ID | リスク | 縮退案 |
+|---|---|---|
+| R1 | `@AGENTS.md` import が初回承認 dialog で user 拒否される | この repo を新規開く ./ run で初回 dialog が出る想定。手動で承認、または事前に user に告知 |
+| R2 | AGENTS.md が 200 行を超える | 中立化で実質 89 行から大きく増えないはず。並列記述で増えても ≤ 120 行想定 |
+| R3 | 共通章の中立化で意味が曖昧になる | 並列記述 (Claude: X、Codex: Y) または「使用中 CLI に応じて」の 2 表現を併用 |
+| R4 | config/ 雛形と root AGENTS.md の整合性 drift | 本 task ではスコープ外、handoff として記録 |
+| R5 | Round 2 で P0/P1 新規発生 | 3 周目修正に入らず統合判断 / user 確認 (CLAUDE.md §停止条件) |
+| R6 | archive plan CLI で archive/README.md table 挿入が手動補完必要 | task 07 (P1-06) 既知制約。CLI 出力を確認して必要なら手動補完 |
 
 ## 停止条件
 
 - レビュー修正 2 周超え
-- public/private 課金発生確認時
-- markdown-link-check が外部 URL の rate limit で繰り返し false positive
+- `@AGENTS.md` import が両 CLI で動作しない（仕様変更が判明）
 - secret 値混入の疑い
+- config/ 雛形変更が必要と判明（scope 拡張で user 確認）
