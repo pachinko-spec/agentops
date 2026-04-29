@@ -20,15 +20,16 @@
 
 ## 実装概要
 
-- `docs/10-cli-wrapper.md` §DbC (L128-152): docs/09 パターンに圧縮（関係文 + 適用 prose、2 段落）
-- `docs/11-monitoring-cli.md` §DbC (L91-114, agentops-watch): docs/09 パターンに圧縮
-- `docs/11-monitoring-cli.md` §DbC（archive サブコマンド）(L169-200): bold heading 形式に変更（章タイトル `### DbC との関係（archive サブコマンド）` + 関係文 + `**適用前提**:` `**適用不変**:` `**適用完了**:` `**適用停止**:` の 4 bullet ブロック）
+- `docs/10-cli-wrapper.md` §DbC (旧 L128-152): docs/09 パターンに圧縮（関係文 + 適用 prose、2 段落）→ 圧縮後は L128 周辺
+- `docs/11-monitoring-cli.md` §DbC (旧 L91-114, agentops-watch): docs/09 パターンに圧縮 → 圧縮後は L91 周辺
+- `docs/11-monitoring-cli.md` §DbC（archive サブコマンド）(旧 L169-200): bold heading 形式に変更（章タイトル `### DbC との関係（archive サブコマンド）` + 関係文 + `**適用前提**:` `**適用不変**:` `**適用完了**:` `**適用停止**:` の 4 bullet ブロック）→ 圧縮後は L139 周辺
 
-DbC リスト形式 12 箇所 (`^前提条件:` 等) は全て削除/再構成済み (検証コマンド `rg -nE "^前提条件:..." docs/10-cli-wrapper.md docs/11-monitoring-cli.md` で 0 件確認)。
+DbC リスト形式 12 箇所 (`^前提条件:` 等) は全て削除/再構成済み。
 
 ## 検証
 
-- 検証コマンド: `rg -nE "^前提条件:|^不変条件:|^完了条件:|^停止条件:" docs/10-cli-wrapper.md docs/11-monitoring-cli.md` → **0 件** ✅
+- 検証コマンド: `grep -nE "^前提条件:|^不変条件:|^完了条件:|^停止条件:" docs/10-cli-wrapper.md docs/11-monitoring-cli.md` → **0 件** ✅
+  - 同等の ripgrep コマンドは `rg -n -e "^前提条件:" -e "^不変条件:" -e "^完了条件:" -e "^停止条件:" docs/10-cli-wrapper.md docs/11-monitoring-cli.md` (ripgrep は `-E` が `--encoding` flag と衝突するため `-e` で複数 pattern を渡す。Round 1 P1 で Codex から指摘あり)
 - docs/03 参照リンク: docs/10 で 1 件、docs/11 で 3 件 (CLI 3 セクション分: agentops / agentops-watch / archive サブコマンド)
 - `python3 -m compileall tools` exit 0
 - `python3 -m unittest discover -s tests` 12/12 pass
@@ -50,27 +51,63 @@ CLI の動作仕様情報は失われていない:
 
 ## Round 1
 
-- run_id: `<TBD on Round 1 投入時>`
-- run path: `.agentops/runs/<ts>-02-dbc-prose-cleanup-docs-10-11-r1/`
-- 実行: `scripts/agentops delegate --to codex --role review_frontier --effort high --input docs/10-cli-wrapper.md --run-id <ISO8601>+0900-02-dbc-prose-cleanup-docs-10-11-r1 --message "<観点>"`
-- exit_code: <TBD>
+- run_id: `20260429t1550210900-02-dbc-prose-cleanup-docs-10-11-r1`
+- run path: `.agentops/runs/20260429t1550210900-02-dbc-prose-cleanup-docs-10-11-r1/`
+- 実行: `scripts/agentops delegate --to codex --role review_frontier --effort high --input docs/11-monitoring-cli.md --run-id 20260429T155021+0900-02-dbc-prose-cleanup-docs-10-11-r1 --message "<観点 7 件>"`
+  - 注: input は `docs/11-monitoring-cli.md` (本 task の主要差分が多い側)。Codex は他のファイル (`docs/10-cli-wrapper.md` / review 記録 / task md) も併読確認している
+- exit_code: 0
+- started_at: 2026-04-29T15:50:21+09:00
+- completed_at: 2026-04-29T15:52:51+09:00
 
 ### 所見サマリ
 
-- P0: <TBD>
-- P1: <TBD>
-- P2: <TBD>
-- P3: <TBD>
+- P0: 0 件
+- P1: 1 件
+- P2: 1 件
+- P3: 1 件
 
 ### Codex 所見原文
 
-<TBD>
+> **Codex Cross-Review Round 1**
+>
+> **P0**: なし
+>
+> **P1**:
+>
+> - `02-dbc-prose-cleanup-docs-10-11.md:31` の検証記録 `rg -nE ...` は、この環境の `ripgrep` では `-E` が encoding 指定として解釈され、exit 2 になります。記録どおりには「0 件確認」できていません。`rg -n -e "^前提条件:|^不変条件:|^完了条件:|^停止条件:" ...` に直して再実行結果を記録してください。意図した検索自体は、修正版コマンドで 0 件でした。
+>
+> **P2**:
+>
+> - `02-dbc-prose-cleanup-docs-10-11.md:55` の Round 1 実行例が `--input docs/10-cli-wrapper.md` のみで、今回の主要スコープである `docs/11-monitoring-cli.md` archive DbC 節と review 記録を入力に含んでいません。実際の review 証跡として使うなら、request ファイルまたは複数 input で docs/10、docs/11、review 記録が対象だと分かる形に修正するのが安全です。
+>
+> **P3**:
+>
+> - `02-dbc-prose-cleanup-docs-10-11.md:23` の行番号説明は圧縮後の現行行番号とずれています。致命的ではありませんが、後で追跡するなら現行行番号または「旧 Lxx」表記に寄せると混乱が減ります。
+>
+> **確認結果**:
+>
+> - archive サブコマンド DbC の 4 bullet 化は、旧 DbC の前提・不変・完了・停止条件を保持しています。atomic write、preflight、path 検証、`..` 検出、exit 2、move 後メタデータ更新順序も残っています。
+> - docs/10 / docs/11 の一般 DbC 節は docs/09 の「関係文 + docs/03 参照 + 適用 prose」パターンと整合しています。
+> - docs/03 参照は docs/10 に 1 件、docs/11 に 3 件ありました。
+> - ローカル検証: `python3 -m compileall tools` OK、`python3 -m unittest discover -s tests` 12/12 pass、`git diff --check origin/main...HEAD` OK。
+> - GitHub Actions はこの環境から独立確認していません。提示された run 25094943774 green を前提にしています。
 
 ### 反映方針表
 
 | 指摘 | 重大度 | 採否 | 対応内容 | 反映先 |
 |---|---|---|---|---|
-| <TBD> | | | | |
+| 検証コマンド `rg -nE` が ripgrep で `-E` = `--encoding` flag と衝突 | **P1** | **採用** | `grep -nE "..."` (portable) を主とし、ripgrep 等価コマンドは `rg -n -e "..." -e "..." ...` (個別 pattern を `-e` で渡す) と併記 | `.agentops/reviews/02-dbc-prose-cleanup-docs-10-11.md` §検証 |
+| Round 1 実行例の `--input docs/10-cli-wrapper.md` が主要スコープを完全に表していない | P2 | **採用** | 実 review に整合させて `--input docs/11-monitoring-cli.md` に修正、注記で「他ファイルも Codex が併読確認している」を明示 | `.agentops/reviews/02-dbc-prose-cleanup-docs-10-11.md` Round 1 §実行 |
+| 行番号説明が圧縮後の現行行番号とずれ | P3 | **採用** | 「旧 Lxxx → 圧縮後は Lxxx 周辺」表記に修正 | `.agentops/reviews/02-dbc-prose-cleanup-docs-10-11.md` §実装概要 |
+
+### Codex の確認済み事項 (Round 1)
+
+- archive サブコマンド DbC の 4 bullet 化が旧 DbC 4 条件を完全保持 (atomic write / preflight / path 検証 / `..` 検出 / exit 2 / メタデータ更新順序)
+- docs/10 / docs/11 の一般 DbC 節が docs/09 パターンと整合
+- docs/03 参照: docs/10 で 1 件、docs/11 で 3 件
+- `python3 -m compileall tools` OK
+- `python3 -m unittest discover -s tests` 12/12 pass
+- `git diff --check origin/main...HEAD` OK
 
 ---
 
