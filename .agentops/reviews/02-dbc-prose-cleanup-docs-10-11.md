@@ -113,28 +113,117 @@ CLI の動作仕様情報は失われていない:
 
 ## Round 2
 
-(Round 1 修正後の clean 確認)
+- run_id: `20260429t1555320900-02-dbc-prose-cleanup-docs-10-11-r2`
+- run path: `.agentops/runs/20260429t1555320900-02-dbc-prose-cleanup-docs-10-11-r2/`
+- exit_code: 0
+- started_at: 2026-04-29T15:55:32+09:00
+- completed_at: 2026-04-29T15:59:12+09:00
+
+### 所見サマリ
+
+- P0: 0 件
+- P1: 0 件 ← Round 1 P1 完全解消
+- P2: 0 件 ← Round 1 P2 完全解消
+- P3: 0 件 ← Round 1 P3 完全解消
+
+### Codex 所見原文
+
+> **レビュー結果**
+>
+> P0: なし / P1: なし / P2: なし / P3: なし
+>
+> Round 1 指摘の反映は確認済みです。
+>
+> - **P1**: review 記録 §31 に `grep -nE` と `rg -n -e ...` の両方が記載されています。実行結果も両方 0 件でした。
+> - **P2**: review 記録 Round 1 §実行は `--input docs/11-monitoring-cli.md` に修正済みです。
+> - **P3**: review 記録 §23 は「旧 Lxxx → 圧縮後は Lxxx 周辺」表記に修正済みです。
+>
+> docs/10、docs/11、review 記録を確認しましたが、新規 P0/P1 はありません。CLAUDE.md / AGENTS.md の auto-merge 6 件評価についても、現差分上 P0/P1 残存は見つかりません。
+>
+> **検証**:
+>
+> - `grep -nE ... docs/10-cli-wrapper.md docs/11-monitoring-cli.md`: 0 件
+> - `rg -n -e ... docs/10-cli-wrapper.md docs/11-monitoring-cli.md`: 0 件
+> - `python3 -m compileall tools`: pass
+> - `python3 -m unittest discover -s tests`: 12/12 pass
+> - `scripts/agentops-watch check`: OK
+> - `git diff --check origin/main...HEAD`: pass
 
 ---
 
 ## Round 3 (確認専用 final、no further P0/P1 確認)
 
-(Round 2 結果転記後の確認)
+- run_id: `20260429t1559360900-02-dbc-prose-cleanup-docs-10-11-r3`
+- run path: `.agentops/runs/20260429t1559360900-02-dbc-prose-cleanup-docs-10-11-r3/`
+- exit_code: 0
+- started_at: 2026-04-29T15:59:36+09:00
+- completed_at: 2026-04-29T16:02:28+09:00
+
+### 所見サマリ
+
+- P0: 0 件
+- P1: 0 件
+- P2: 1 件 (情報共有、本 PR スコープ外)
+- P3: 1 件 (本 update で解消)
+
+### Codex 所見原文
+
+> **レビュー結果**
+>
+> P0: なし / P1: なし
+>
+> **P2**: plan 完了後処理の注意点あり。`scripts/agentops archive plan` は `plans/current.md` / `task-plans/current.md` / `tasks/*.md` / `reviews/*` を移動しますが、`handoffs/` は対象外です (`tools/agentops_cli/__main__.py:874`)。一方で task 02 は旧 handoff 2 の移動を要求しています (`.agentops/tasks/02-dbc-prose-cleanup-docs-10-11.md:67`)。`agentops-watch check` でも現状 `handoffs: 1` でした。これは現 docs PR の P0/P1 ではありませんが、merge 後の archive dogfood PR で明示的に `git mv` する必要があります。
+>
+> **P3**: review 記録は Round 2 / Round 3 と auto-merge 6 件評価がまだ未記入です。本 Round 3 結果を転記する前提なら問題ありません。
+>
+> **確認結果**:
+>
+> - Round 2 clean 状態は維持されています。
+> - docs/10 / docs/11 の DbC 再構成に新規 P0/P1 は見当たりません。
+> - CLAUDE.md / AGENTS.md auto-merge 6 件評価に対する P0/P1 残存も見当たりません。
+> - `--include-runs` 不使用は妥当です。指定すると `.agentops/runs/*` 全件移動になるため、今回も既定のままが安全です。
+>
+> **検証**:
+>
+> - `rg -n -e "^前提条件:" -e "^不変条件:" -e "^完了条件:" -e "^停止条件:" docs/10-cli-wrapper.md docs/11-monitoring-cli.md`: 0件
+> - `python3 -m compileall tools`: pass
+> - `python3 -m unittest discover -s tests`: 12/12 pass
+> - `git diff --check origin/main...HEAD`: pass
+> - `scripts/agentops-watch check`: OK、runs stuck 0、handoffs 1
+
+### 反映方針表 (Round 3)
+
+| 指摘 | 重大度 | 採否 | 対応内容 |
+|---|---|---|---|
+| archive plan CLI が handoffs/ 対象外、旧 handoff 2 の手動 git mv 必要 | P2 | **採用 (運用反映)** | 本 PR スコープ外。archive ドッグフード PR (post-merge) で `git mv .agentops/handoffs/2026-04-28-dbc-prose-remnants-docs-10-11.md .agentops/archive/2026-04-28-design-review-p0-p1/handoffs/` を明示実行 (task 01 archive ドッグフード PR と同じパターン)。`--include-runs` は使わず既定で進める |
+| review 記録の Round 2/3 と auto-merge 6 件評価が未記入 | P3 | **採用 (本 update で解消)** | Round 2 / Round 3 セクション転記、DbC / auto-merge 6 件評価を ✅ に更新 |
+
+### 確認結果（主 orchestrator 評価）
+
+- **`no further P0/P1` を確認** ✅
+- **CLAUDE.md ループ防止ルール**: Round 1 後 1 周のみ修正、Round 2 で clean、Round 3 で `no further P0/P1`。ループ防止上限 (2 周) 内で完結。
+- **archive ドッグフード PR 計画**:
+  1. `scripts/agentops archive task --task-id 02-dbc-prose-cleanup-docs-10-11` (task md を archive へ)
+  2. `git mv .agentops/handoffs/2026-04-28-dbc-prose-remnants-docs-10-11.md .agentops/archive/2026-04-28-design-review-p0-p1/handoffs/` (旧 handoff 2 を archive へ、CLI 対象外のため手動)
+  3. `scripts/agentops archive plan --plan-id 2026-04-29-handoff-followups --summary <text>` (`--include-runs` なし)
+  4. `prompts/next-session.md` 削除 (CLAUDE.md グローバル方針「残作業がなければ削除」)
 
 ---
 
 ## DbC 完了評価（task 02 §完了条件）
 
-- [x] docs/10, 11 の DbC prose 12 箇所が削除または再構成 (rg 検証 0 件)
+- [x] docs/10, 11 の DbC prose 12 箇所が削除または再構成 (grep -nE / rg -n -e 両方で 0 件確認)
 - [x] docs/03 への参照リンクが docs/10, 11 から両方向で機能 (markdown-link-check pass、参照件数: 10 → 1, 11 → 3)
-- [x] CLI の動作仕様情報は失われていない (本文章節 + archive サブコマンドの bold heading 形式 DbC で保持)
-- [ ] Codex cross-review 通過 (Round 3 で `no further P0/P1`)
+- [x] CLI の動作仕様情報は失われていない (本文章節 + archive サブコマンドの bold heading 形式 DbC で保持、Codex Round 1-3 で確認)
+- [x] Codex cross-review 通過 (Round 1 P1=1 + P2=1 + P3=1 採用 → Round 2 clean → Round 3 `no further P0/P1`)
 
 ## auto-merge 6 件評価（CLAUDE.md / AGENTS.md §許諾条件、Round 3 後 = 最終評価）
 
-- [ ] DbC 完了
-- [ ] 別系列 frontier cross-review 通過
-- [ ] CI green
-- [ ] 観察事実食い違いなし
-- [ ] PR スコープ単一
-- [ ] secret 未混入
+- [x] **DbC 完了**: task 02 §完了条件すべて満たす
+- [x] **別系列 frontier cross-review 通過**: 主 orchestrator (Claude Opus 4.7 / Anthropic 系) → reviewer (Codex / OpenAI 系)、3 Round 全完了、Round 3 `no further P0/P1` 確認、run 記録 `.agentops/runs/20260429t15{5021,5532,5936}0900-02-dbc-prose-cleanup-docs-10-11-r{1,2,3}/` 保存
+- [x] **CI green**: PR #56 の Actions runs (25094943774 初回 / 25095123684 R1 修正後) で 4 job 全 pass
+- [x] **観察事実食い違いなし**: 旧 handoff §推奨 task spec § archive サブコマンド保持、§rg 0 件、§docs/03 参照両方向機能、§CLI 仕様情報保持 すべて満たす
+- [x] **PR スコープ単一**: docs/10, 11 / `.agentops/reviews/02-dbc-prose-cleanup-docs-10-11.md` のみ。docs/03 / docs/09 不変、scope 外リファクタなし
+- [x] **secret 未混入**: Codex Round 1-3 で diff・記録に secret 値混入なし確認
+
+→ **6 件全 OK、AI auto-merge 許諾**。次手順: `gh pr merge 56 --squash --delete-branch`。
