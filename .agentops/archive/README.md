@@ -6,6 +6,7 @@
 
 | 完了日 | plan-id | サマリ |
 |---|---|---|
+| 2026-04-29 | [notification-strategy-and-project-localization](2026-04-29-notification-strategy-and-project-localization/plan.md) | Discord 通知戦略 docs (4 channel + ANT_TIME) と関連 catalog / templates 整備 (PR-B #58) + プロジェクトローカライズ戦略 docs (4 戦略意思決定木 + 主要 5 件 dry-run + skill 雛形) (PR-C 本 PR)。Codex cross-review PR-B 2 round / PR-C 4 round で全 P0/P1 反映済。 |
 | 2026-04-29 | [handoff-followups](2026-04-29-handoff-followups/plan.md) | 前 plan 2026-04-28-design-review-p0-p1 完了時の handoff 2 件を消化。task 01 で skill / workflow → rule 逆参照列追加 (cross-reference 双方向化、catalog 31+15 件)、task 02 で docs/10, 11 の DbC prose 12 箇所を docs/03 参照化 (docs/09 パターン適用、archive サブコマンドは bold heading 形式で仕様情報保持)。Codex 3 Round + AI auto-merge 6 件評価で全 PR 通過 (PR #54-56)。 |
 | 2026-04-29 | [design-review-p0-p1](2026-04-28-design-review-p0-p1/plan.md) | 9 task 全完了。設計レビュー P0/P1 反映で agentops repo を D 帯から B+ 帯へ底上げ: tool stop_conditions, archive 自動更新 CLI, glossary, deprecation marker, DbC 集約, cross-reference, last_reviewed frontmatter, 最小 CI + .gitignore, AGENTS.md 一本化。Codex 3 Round + AI auto-merge 6 件評価で全 PR 通過 (PR #30-52)。 |
 | 2026-04-28 | [cross-repo-design-review](2026-04-28-cross-repo-design-review/plan.md) | agentops 全体（docs / rules / skills / workflows / config / templates / scripts / .agentops / CLAUDE.md / AGENTS.md）を AI コーディングエージェント設計思想として 6 軸（一貫性 / 契約と停止 / マルチモデル / 鮮度 / 運用負荷 / 拡張性）で再評価し、強み・弱み・改善提案（P0=1 / P1=8 / P2=6 / P3=3 計 18 件）を `docs/reviews/2026-04-28-cross-repo-design-review.md` に格納。Codex cross-review で観察事実誤認 4 点を反映済み |

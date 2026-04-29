@@ -31,6 +31,7 @@ language: ja
 | planning-approval | 実装・削除・外部反映前に計画と承認を求める | [requirements-review](../skills/catalog.md) | [plan-approval](../workflows/catalog.md) | — |
 | git-and-branch-policy | 作業ブランチ・PR・merge・main 同期を統一する | [release-readiness-review](../skills/catalog.md) | [feature-delivery](../workflows/catalog.md) | [scripts/hooks/pre-commit](../scripts/hooks/pre-commit)（[check-protected-branch](../scripts/check-protected-branch)） |
 | project-scope | 実作業対象・dotfiles 除外・プロジェクト固有設定優先を明確にする | [architecture-boundary-review](../skills/catalog.md) | [project-intake](../workflows/catalog.md) | — |
+| project-integration-policy | 既存プロジェクトに残る Claude Code / Codex / Antigravity / Cursor / Gemini 等の旧設計痕跡と新グローバル設計の競合判定・統合戦略 (greenfield / inventory-rebuild / coexistence / freeze) を明確にする | [project-localize-inventory](../skills/catalog.md) | [project-localize](../workflows/catalog.md) | — |
 | freshness-policy | ライブラリ・CLI・API・モデルの最新性を公式情報で確認する | [freshness-audit](../skills/catalog.md) | [freshness-audit](../workflows/catalog.md) | — |
 | documentation-policy | 実装差分に応じて README・docs・runbook・release notes を更新する | [docs-maintainer](../skills/catalog.md) | [docs-update](../workflows/catalog.md) | — |
 | review-policy | correctness・security・regression・tests を優先してレビューする | [correctness-review](../skills/catalog.md) | [code-review](../workflows/catalog.md) | — |

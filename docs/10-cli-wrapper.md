@@ -22,7 +22,12 @@ scripts/agentops delegate --to claude --role architect_frontier --model <claude-
 scripts/agentops delegate --to codex --role review_frontier --dry-run --input README.md
 scripts/agentops runs
 scripts/agentops doctor
+
+# 将来実装 (別 plan で追加、本 docs は spec のみ)
+scripts/agentops localize --project <path> [--dry-run] [--strategy auto|greenfield|inventory-rebuild|coexistence|freeze]
 ```
+
+> **実装ステータス注記**: `delegate` / `runs` / `doctor` は実装済 (`tools/agentops_cli/`)。`localize` サブコマンドは [プロジェクトローカライズ戦略](19-project-localization.md) で仕様だけ規定された **契約段階** で、`tools/agentops_cli/` 実装は未追加。実装本体は別 plan で扱う。
 
 ## 入力境界
 
