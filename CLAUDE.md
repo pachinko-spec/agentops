@@ -17,5 +17,5 @@
 ## メモ
 
 - `AGENTS.md` §AI auto-merge 許諾 の「主 orchestrator」は本セッションで使う Claude Code を指します。許諾条件・停止条件・後処理は `AGENTS.md` 記述のとおりです。
-- `AGENTS.md` は両 CLI 共通の真ソースです。Claude Code 固有 / Codex 固有で記述が分かれる場合のみ、本ファイル（CLAUDE.md）または `config/codex/AGENTS.md`（Codex 固有グローバル雛形）を更新します。両 CLI 共通の更新は `AGENTS.md` 単独で完結させてください。
+- `AGENTS.md` は両 CLI 共通の真ソースです。Claude Code 固有 project 差分は本ファイル（CLAUDE.md）に追記します。Codex 固有 project 差分は `AGENTS.md` 内の Codex 固有セクション、または agentops repo に意図的に導入する `AGENTS.override.md` に置きます（`config/codex/AGENTS.md` は `~/.codex/AGENTS.md` グローバル反映用の **雛形** であり、本 repo 内の project instruction ではないため使用しません）。両 CLI 共通の更新は `AGENTS.md` 単独で完結させてください。
 - `@AGENTS.md` 構文は Claude Code の memory file import 公式仕様（`code.claude.com/docs/en/memory` §AGENTS.md）に従っています。本 repo を初めて開いた Claude Code セッションでは初回 import 承認 dialog が出る場合があります（公式 docs 既知挙動）。

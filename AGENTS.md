@@ -53,7 +53,9 @@ Claude Code 固有の補足は同階層の `CLAUDE.md` にあります。`CLAUDE
 ### 許諾条件（全て AND）
 
 1. **DbC 完了**: 該当 PR がカバーする `.agentops/tasks/<NN>-*.md` の DbC 完了条件をすべて満たしている。
-2. **Codex cross-review 通過**: 別系列 frontier reviewer (Codex / OpenAI 系) で `scripts/agentops delegate --to codex --role review_frontier --effort high --input <該当ファイル>` を実施済み、所見に **P0 / P1 が 0 件、または反映済み**。run 記録が `.agentops/runs/<timestamp>-<task-id>/` に残っている。
+2. **別系列 frontier cross-review 通過**: 主 orchestrator とは異なる系列の frontier reviewer で `scripts/agentops delegate --to <reviewer> --role review_frontier --effort high --input <該当ファイル>` を実施済み、所見に **P0 / P1 が 0 件、または反映済み**。run 記録が `.agentops/runs/<timestamp>-<task-id>/` に残っている。reviewer 選定は **主 orchestrator と別系列（Anthropic ↔ OpenAI）** とする。
+   - 主 orchestrator が Claude Code (Anthropic 系) → reviewer は **Codex / OpenAI 系** (`--to codex`)
+   - 主 orchestrator が Codex (OpenAI 系) → reviewer は **Claude / Anthropic 系** (`--to claude`)
 3. **CI green**: GitHub Actions の fail 系 job（actionlint / yamllint / markdown-link-check が導入済みなら全 job、未導入なら自己検証で `python3 -m compileall tools` 等が exit 0）。
 4. **観察事実食い違いなし**: 着手時に裏取りした観察事実と現状に食い違いが新たに発生していない。
 5. **PR スコープ単一**: 該当 task が要求する変更だけを含み、スコープ外リファクタを含まない。

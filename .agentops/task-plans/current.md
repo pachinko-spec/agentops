@@ -69,19 +69,20 @@ import 仕様 (`### Import additional files`):
 
 | step | 内容 | 状態 |
 |---|---|---|
-| 2.1 | `AGENTS.md` 1 行目 / intro を中立化（Claude Code / Codex 並列） | ⏳ |
-| 2.2 | §記録先: `~/.claude/` / `~/.codex/` を並列記述 | ⏳ |
-| 2.3 | §global 設定を触る作業: 章名を中立化 (`~/.codex` を触る作業` → `global 設定 (~/.claude/ / ~/.codex/) を触る作業`)、CLI specific 確認方法を並列記述 | ⏳ |
-| 2.4 | §Git と作業ブランチ: branch prefix を「使用中 CLI: Claude `claude/`、Codex `codex/`」と並列記述 | ⏳ |
-| 2.5 | §AI auto-merge: 主 orchestrator を「Claude Code / Codex いずれの場合も」 | ⏳ |
+| 2.1 | `AGENTS.md` 1 行目 / intro を中立化（Claude Code / Codex 並列） | ✅ |
+| 2.2 | §記録先: `~/.claude/` / `~/.codex/` を並列記述 | ✅ |
+| 2.3 | §global 設定を触る作業: 章名を中立化、CLI specific 確認方法を並列記述 | ✅ |
+| 2.4 | §Git と作業ブランチ: branch prefix を「Claude Code: `claude/`、Codex: `codex/`」並列記述 | ✅ |
+| 2.5 | §AI auto-merge: 主 orchestrator を「Claude Code / Codex いずれの場合も」、cross-review §reviewer は主 orchestrator と別系列 (Round 1 P1 反映) | ✅ |
 
 ### Phase 3: CLAUDE.md 短縮版（≤ 50 行）
 
 | step | 内容 | 状態 |
 |---|---|---|
-| 3.1 | 1 行目に `@AGENTS.md` を配置（公式推奨）| ⏳ |
-| 3.2 | Claude Code 固有差分セクション (パス・確認コマンド・branch prefix のみ) を追記 | ⏳ |
-| 3.3 | 行数確認 ≤ 50 | ⏳ |
+| 3.1 | 1 行目に `@AGENTS.md` を配置（公式推奨）| ✅ |
+| 3.2 | Claude Code 固有差分セクション (パス・確認コマンド・branch prefix のみ) を追記 | ✅ |
+| 3.3 | 行数確認 ≤ 50 | ✅ (21 行) |
+| 3.4 | Codex 固有 project 差分の置き場を AGENTS.md 内 / AGENTS.override.md に明示 (Round 1 P2 反映) | ✅ |
 
 ### Phase 4: ローカル smoke
 
@@ -114,7 +115,7 @@ Round 2 で clean 確認、Round 3 で `no further P0/P1`。
 
 ### Phase 7: AI auto-merge 6 件評価 → squash merge
 
-CLAUDE.md / AGENTS.md §許諾条件を独立評価。全 OK なら `gh pr merge 50+1 --squash --delete-branch`。
+CLAUDE.md / AGENTS.md §許諾条件を独立評価。全 OK なら `gh pr merge <PR_NUMBER> --squash --delete-branch`（本 task では PR #52）。
 
 ### Phase 8: main 同期 + archive ドッグフード PR (plan 全体 archive)
 
