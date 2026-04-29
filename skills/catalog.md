@@ -59,6 +59,7 @@ Skill 名、description、tool 権限、supporting files は CLI ごとの公式
 | cross-model-delegate | Claude / Codex / subagent へ分担する | cross-review、広範囲調査、別 CLI での独立確認 | global | [review-policy](../rules/catalog.md) |
 | review-loop-guard | レビュー修正ループを制御する | レビュー後修正 | global | [review-policy](../rules/catalog.md) |
 | notification-digest-writer | `.agentops/` の plans / tasks / handoffs / next-session.md / runs を集約して Discord embed payload (`--kind daily|weekly|monthly|alert|session-*` 等) を整形する | cron / hook / 手動アラート | global | [notification-policy](../rules/catalog.md) |
+| project-localize-inventory | 既存プロジェクトの設計痕跡 (CLAUDE.md / AGENTS.md / .codex / .claude / .cursorrules 等) を inventory 化し、4 戦略 (greenfield / inventory-rebuild / coexistence / freeze) のうち 1 つを推奨する | 新規 onboarding、グローバル設計改訂後の見直し | global | [project-integration-policy](../rules/catalog.md) |
 
 ## 生成時の注意
 
