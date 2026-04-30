@@ -1,7 +1,7 @@
 ---
 task-id: 02-skills-weekly-monthly-audit
 plan-id: 2026-04-30-discord-cron-3tier-redesign
-status: pending-merge
+status: completed
 branch: claude/discord-cron-3tier-pr-b-skills
 pr-target: B
 started: 2026-04-30T15:00:00+09:00

@@ -82,6 +82,21 @@ applies-to: global
 | 旧 `archive/reference-kit-v1/` 由来の rule / skill / workflow を直コピー | 中 | 新カタログとの差分追従が止まっている可能性 |
 | 過去の `decisions/` (ADR) | 低 | 履歴として尊重、新方針と齟齬は note 扱い |
 
+## 監視 / 通知の整合性チェック
+
+本 docs で判定した localize 4 戦略は、`agentops-watch notify --auto-discover` の通知対象とも連動する。auto-discovery は `~/.claude` `~/.codex` `~/agentops` `~/dev/*` の 4 root から `.agentops/` を持つ project を浅く scan する仕様 ([docs/18 §多プロジェクト走査ルール](18-notification-strategy.md))。
+
+通知対象に含まれた project は weekly / monthly の skill レビュー (`/weekly-audit` / `/monthly-audit`、[`~/.claude/skills/`](../config/claude/CLAUDE.md)) で **本 docs の 4 戦略観点で再評価** される:
+
+- **greenfield 採用済の project**: `.agentops/` 構造 (plans / tasks / handoffs / runs / prompts) が最小限揃っているか、DbC 5 条件が記述されているかを weekly skill が確認する。
+- **inventory-rebuild 採用済の project**: 旧痕跡が deprecated 状態で残置されていないか (`.claude/` / `.codex/` / `.cursorrules` 等の混在)、Trinity 三役 ((a) catalog / (b) shared-cli / (c) template-source) のどれに属するかが整合しているか。
+- **coexistence 採用済の project**: 旧 plan / 新 `.agentops/plans/current.md` の二重運用が発生していないか。
+- **freeze 採用済の project**: `.agentops/` を作って auto-discovery 対象に入れている場合、空 `.agentops/` でも skill が結果を出すため、定期的に `coexistence` 以上へ昇格する判断が必要かを monthly skill が flag。
+
+監視 / 通知の整合性違反 (例: project が freeze 戦略のはずなのに weekly digest に頻繁な dirty / stuck 報告が出ている) を検出した場合、skill は per-project verdict に WARN として記録し、user 判断で再 localize する手続きへ繋げる。
+
+CLI 仕様は [docs/11-monitoring-cli.md §`--auto-discover` の走査仕様](11-monitoring-cli.md)、通知設計は [docs/18-notification-strategy.md §多プロジェクト走査ルール](18-notification-strategy.md) を参照。
+
 ## 4 戦略の意思決定木
 
 判定軸:

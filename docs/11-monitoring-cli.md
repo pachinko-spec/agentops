@@ -31,11 +31,14 @@ scripts/agentops-watch check --projects config/projects.yml --freshness config/f
 scripts/agentops-watch check --json
 
 # notify の現行 (kind 必須、4 channel)
-scripts/agentops-watch notify --kind daily|weekly|monthly --projects config/projects.yml [--message <text>] [--dry-run]
+scripts/agentops-watch notify --kind daily|weekly|monthly (--auto-discover | --projects config/projects.yml) [--message <text>] [--dry-run]
 scripts/agentops-watch notify --kind session-start|session-end --project <path>          [--dry-run]
 scripts/agentops-watch notify --kind permission-wait --project <path> --message <tool>   [--dry-run]
 scripts/agentops-watch notify --kind alert [--project <path>] --message <text>           [--dry-run] [--priority high [--bypass-rate-limit]]
 scripts/agentops-watch notify --kind stop-failure --project <path> --message <text>      [--dry-run]
+
+# `check` も `--auto-discover` 受付 (skill / wrapper script が project list を取得する経路)
+scripts/agentops-watch check --auto-discover --json
 
 # notify の旧 path (deprecated、--kind 未指定時のみ動作、AGENTOPS_DISCORD_WEBHOOK_URL を参照)
 scripts/agentops-watch notify [--dry-run] --projects config/projects.yml
@@ -72,6 +75,29 @@ scripts/agentops-watch notify --kind weekly --projects config/projects.yml \
 scripts/agentops-watch notify --kind alert --message "smoke test" --dry-run
 scripts/agentops-watch notify --kind session-start --project /home/<user>/dev/<proj> --dry-run
 ```
+
+## `--auto-discover` の走査仕様
+
+digest kind (`daily` / `weekly` / `monthly`) と `check` で利用可能。CLI は内部で 4 root を hardcode し、`.agentops/` directory を持つ project を浅く scan する:
+
+- `~/.claude` 直下 (Claude Code global)
+- `~/.codex` 直下 (Codex global)
+- `~/agentops` 直下 (本 repo)
+- `~/dev/*` (1 階層 glob、max depth 1)
+
+判定条件は **`<root>/.agentops` が directory として存在すること** のみ (空 `.agentops/` も対象、ユーザー方針)。broken symlink / OSError は continue で skip。重複 path は `Path.resolve()` で dedupe し、結果は path 順にソート。
+
+`--auto-discover` と `--projects` は **排他** (同時指定で `ValueError` → exit 2)。0 件マッチでも空 list を返し空 embed を 1 通送信する (毎朝送信を維持、空集合を通知価値として扱う)。
+
+非 git directory (例: `~/.claude` / `~/.codex`) でも `.agentops/{tasks,handoffs,runs,prompts}` 集計は実行する (git status 失敗を early return せず fall-through)。
+
+cron / wrapper script からの推奨呼び出し:
+```sh
+scripts/agentops-watch notify --kind daily --auto-discover [--message "..."]
+scripts/agentops-watch check  --auto-discover --json
+```
+
+`--projects config/projects.yml` を hardcode で渡したい用途 (CI 単体動作確認、特定 project に絞った監視) は引き続き利用可能。
 
 digest kind の `--message` は任意の自由テキストを受け取り、embed の末尾に `audit log`
 field として追加する (1024 文字 truncate + mention sanitize)。audit-*.sh などの cron
