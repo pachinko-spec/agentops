@@ -3,6 +3,7 @@ last_reviewed: 2026-04-28
 next_review_by: 2026-07-31
 reviewer: pachinko-spec
 language: ja
+applies-to: shared-cli-spec
 ---
 
 # 監視 / archive CLI 仕様
@@ -13,6 +14,12 @@ language: ja
 cron / systemd timer / 手動実行から呼び出す。
 
 `agentops archive` は、完了 plan / task を `.agentops/archive/<plan-id>/` に移し、`.agentops/prompts/next-session.md` を機械的に更新する CLI である。CLAUDE.md / AGENTS.md durable instructions の「auto-merge 後の必須手順」が要求する後処理を、人手忘れに頼らず一発で実行するためのもの。
+
+## shared-cli-spec パターンでの位置付け
+
+本 docs は `applies-to: shared-cli-spec` であり、agentops の三役 ((a) 設計思想カタログ / (b) 共有 CLI / (c) 雛形配布元) のうち **共有 CLI / ライブラリ (b)** の仕様を規定する。実体は `tools/agentops_monitor` / `tools/agentops_cli` に置かれ、cron / Claude Code hook / Codex hook / shell scripts (host 側 `audit-*.sh` 等) / 他 repo から呼ばれる **集約点** として機能する。思想層の上位 docs は [docs/18 (`applies-to: global`)](18-notification-strategy.md) と [docs/06 (`applies-to: global`)](06-freshness-and-monitoring.md)。用語の正式定義 (§三役 / §shared-cli-spec パターン を含む) は [docs/00-glossary.md §docs 分類 / リポジトリ責務](00-glossary.md#docs-分類--リポジトリ責務)。
+
+別 AI への指針: **本 CLI の実装本体は touch せず、`scripts/agentops-watch` / `scripts/agentops` を呼び出すだけ** とする。同等の機能を host / 他 repo で再実装しない。
 
 ## コマンド
 

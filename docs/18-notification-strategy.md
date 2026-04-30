@@ -3,6 +3,7 @@ last_reviewed: 2026-04-29
 next_review_by: 2026-07-31
 reviewer: pachinko-spec
 language: ja
+applies-to: global
 ---
 
 # 通知戦略
@@ -12,6 +13,23 @@ language: ja
 複数プロジェクトの作業状況・セッションのライフサイクル・任意のアラートを、外部 cron / hook / 手動実行から **一方向の Discord webhook digest** として届けるための設計思想。実体 CLI は [agentops-watch notify](11-monitoring-cli.md)、上位の最新性・監視論は [最新性と監視](06-freshness-and-monitoring.md) を参照する。
 
 本 docs は **設計思想と契約** だけを扱い、実 cron 行・実 hook ファイルはプロジェクトまたはグローバル設定側で運用する。
+
+## shared-cli-spec パターンの適用
+
+本 docs は agentops の三役 ((a) 設計思想カタログ / (b) 共有 CLI / (c) 雛形配布元) のうち、**思想層 (a)** を担う。実装層 (b) は agentops repo の共有 CLI に集約され、利用層 (host / 他 repo / cron / hook / shell scripts) は CLI を呼び出すだけで実装本体を touch しない。用語定義 (§三役 / §shared-cli-spec パターン を含む) は [docs/00-glossary.md §docs 分類 / リポジトリ責務](00-glossary.md#docs-分類--リポジトリ責務) を参照。
+
+| 層 | 役割 | 実体 | `applies-to` |
+| --- | --- | --- | --- |
+| 思想層 | kind / channel mapping / DbC / rate-limit / 起動契約を固定する | 本 docs (`docs/18-notification-strategy.md`) | `global` |
+| 実装層 | 思想を実現する共有 CLI 仕様 + 実体 | [`docs/11-monitoring-cli.md`](11-monitoring-cli.md) + `tools/agentops_monitor` (`scripts/agentops-watch notify --kind <kind>`) | `shared-cli-spec` |
+| 利用層 | 共有 CLI を呼び出す | cron (`config/cron.example`) / Claude Code hook / Codex hook / shell scripts (host 側 `audit-*.sh` 等) | — (各層の運用ファイル) |
+
+別 AI が読むときの指針:
+
+- **思想 (本 docs)** は `applies-to: global` で全 host / 全 project に適用される。グローバル設定 (`~/.claude/CLAUDE.md` / `~/.codex/AGENTS.md`) で参照しても良い。
+- **実装本体** (`tools/agentops_monitor`) を再実装しない。同等の通知が必要なら `agentops-watch notify --kind <kind>` を呼ぶ。
+- **利用層** (cron 行 / hook ファイル / shell script) は各 host / 各 repo の運用責任。本 docs は **起動契約** と雛形だけを規定し、実ファイル本体は別途配置する。
+- **環境変数の値** (Webhook URL) は host 側で export される `DISCORD_WEBHOOK_URL_{DAILLY,WEEKLY,MONTHLY,ANT_TIME}` を尊重する。本 docs / agentops repo に値そのものを書かない。
 
 ## 通知の目的 3 分類
 
