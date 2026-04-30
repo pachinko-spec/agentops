@@ -6,6 +6,7 @@
 
 | 完了日 | plan-id | サマリ |
 |---|---|---|
+| 2026-04-30 | [discord-cron-3tier-redesign](2026-04-30-discord-cron-3tier-redesign/plan.md) | Discord 通知 cron を 3-tier (daily=CLI軽量 / weekly=/weekly-audit / monthly=/monthly-audit + quarterly 吸収) に再編、agentops/scripts/ に集約、auto-discovery で 4 root scan に拡張。post-merge hotfix で Cloudflare bot block を回避し signal-only + emoji digest に改善。 |
 | 2026-04-30 | [applies-to-and-trinity](2026-04-30-applies-to-and-trinity/plan.md) | applies-to frontmatter 導入 (4 値) + 三役 (Trinity) 宣言 + Discord 通知 docs に shared-cli-spec パターン明示 |
 | 2026-04-30 | [agentops-localize-cli](2026-04-30-agentops-localize-cli/plan.md) | agentops localize CLI 実装 (痕跡 inventory + 4 戦略意思決定木 + 未列挙 escalate + report) |
 | 2026-04-30 | [agentops-monitor-digest-message](2026-04-30-agentops-monitor-digest-message/plan.md) | digest kind に --message (audit log field) 追加 + audit-*.sh × 3 を agentops-watch notify へ切替 |
