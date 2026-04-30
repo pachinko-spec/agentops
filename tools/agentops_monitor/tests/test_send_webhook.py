@@ -51,6 +51,28 @@ class SendWebhookTests(unittest.TestCase):
         self.assertNotIn("Python-urllib", ua)
         self.assertIn("agentops-watch", ua)
 
+    def test_request_includes_browser_like_baseline_headers(self) -> None:
+        # urllib の minimum header (Content-Type + UA のみ) では Cloudflare bot
+        # heuristics で連続送信時に断続的に block されるため、通常の HTTP client が
+        # 送る Accept / Accept-Language / Connection を明示する。
+        opener = mock.MagicMock(return_value=_make_response(204))
+        send_webhook(
+            "https://discord.invalid/webhooks/0/dummy",
+            {"x": 1},
+            opener=opener,
+        )
+        called_args, _ = opener.call_args
+        req = called_args[0]
+        # Request.get_header は title-cased lookup を要するため両方試す
+        accept = req.get_header("Accept")
+        accept_lang = req.get_header("Accept-language") or req.get_header("Accept-Language")
+        connection = req.get_header("Connection")
+        self.assertIsNotNone(accept, "Accept header must be set")
+        self.assertIn("application/json", accept)
+        self.assertIsNotNone(accept_lang, "Accept-Language header must be set")
+        self.assertIsNotNone(connection, "Connection header must be set")
+        self.assertEqual(connection, "close")
+
     def test_204_returns_status(self) -> None:
         opener = mock.MagicMock(return_value=_make_response(204))
         status, _ = send_webhook(
