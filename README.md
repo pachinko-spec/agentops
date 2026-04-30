@@ -2,6 +2,14 @@
 
 Claude Code / Codex のグローバル設定を設計・見直すときに参照する、設計思想、判断材料、設定テンプレート、チェックリスト、補助ツールを管理するリポジトリです。
 
+## 三役 (Trinity)
+
+このリポジトリは同時に **3 つの役割** を担っています。各 `docs/*.md` の `applies-to` frontmatter で機械可読に分類されています（詳細は [`docs/00-glossary.md`](docs/00-glossary.md) §docs 分類 / リポジトリ責務、および [`AGENTS.md`](AGENTS.md) §このリポジトリの位置づけ — 三役 を参照）。
+
+- **(a) 設計思想カタログ (catalog)**: `docs/` (`applies-to: global` の docs) / `rules/` / `skills/` / `workflows/` / `templates/` に思想・rule・workflow・skill の **候補** をまとめています。完成品集ではなく、各 CLI エージェントが現在仕様・公式 docs・実環境・既存設定を確認して採用 / 調整 / 見送りを判断します。
+- **(b) 共有 CLI / ライブラリ (shared CLI)**: `tools/agentops_cli` (`scripts/agentops`) / `tools/agentops_monitor` (`scripts/agentops-watch`) は cron / hook / shell scripts / 他 repo から呼ばれる **集約点** です。Discord 通知 / archive 後処理 / monitoring / cross-model 委譲 / project localization を提供します（仕様は `applies-to: shared-cli-spec` の docs で固定）。利用層は CLI を呼び出すだけで、実装本体は touch しません。
+- **(c) 雛形配布元 (template source)**: `config/claude/CLAUDE.md` / `config/codex/AGENTS.md` / `config/harness.yml` / `config/cron.example` 等は、グローバル設定や cron / hook の **配布 source** です。これらを変更しただけで `~/.claude/` / `~/.codex/` などの実グローバル設定が更新されるわけではなく、明示的な反映作業が必要です。
+
 各 CLI のエージェントはこのリポジトリを参照し、ユーザー個人の開発方針、ワークフロー、品質ゲート、cross-model 委譲、ドキュメント更新方針を理解します。そのうえで、現在の CLI 仕様、実環境、既存グローバル設定を調査し、採用する内容、編集する内容、見送る内容を計画します。
 
 このリポジトリ自体は、汎用 AI 運用フレームワークや、`rules/`、`skills/`、`workflows/` をそのまま各 CLI に採用させるための管理元ではありません。`rules/`、`skills/`、`workflows/` は完成品集ではなく、AI エージェントが公式 docs、実環境、既存設定、ユーザーの開発方針を確認して必要な設定を生成するための候補カタログです。

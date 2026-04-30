@@ -4,11 +4,36 @@
 
 Claude Code 固有の補足は同階層の `CLAUDE.md` にあります。`CLAUDE.md` は `@AGENTS.md` で本ファイルを import し、Claude Code 固有のパス・確認コマンド・branch prefix のみを差分として追記しています。両ファイルの章立ては本ファイルを基準にしてください。
 
-## このリポジトリの位置づけ
+## このリポジトリの位置づけ — 三役 (Trinity)
 
-- `agentops` は Claude Code / Codex のグローバル設定、運用思想、雛形、候補カタログを保守するリポジトリです。
-- `config/claude/CLAUDE.md` は `~/.claude/CLAUDE.md`、`config/codex/AGENTS.md` は `~/.codex/AGENTS.md` へ反映するための雛形です。これらを変更しただけでは実グローバル設定には反映されません。
-- `rules/`、`skills/`、`workflows/` は完成品ではなく候補カタログとして扱います。実設定へ採用する場合は、使用中 CLI の現在仕様、公式 docs、実環境、既存設定を確認して調整します。
+`agentops` は Claude Code / Codex のグローバル設定と関連運用を支えるため、同時に **3 つの役割** を担います。各 docs / config / scripts / tools がどの役割に属するかは、`docs/*.md` の `applies-to` frontmatter で機械可読に分類しています（用語定義は [docs/00-glossary.md §docs 分類 / リポジトリ責務](docs/00-glossary.md#docs-分類--リポジトリ責務) を参照）。
+
+### (a) 設計思想カタログ (catalog) — `applies-to: global` / `template-source`
+
+- 対象: `docs/` (`applies-to: global` の docs) / `rules/` / `skills/` / `workflows/` / `templates/`
+- 役割: Claude Code / Codex のグローバル設定や他プロジェクトへ反映する候補として、思想・rule・workflow・skill を提示する
+- 別 AI への指針: 候補カタログとして読み、使用中 CLI の現在仕様・公式 docs・実環境・既存設定を確認した上で採用 / 調整 / 見送りを判断する。完成品集ではない
+
+### (b) 共有 CLI / ライブラリ (shared CLI) — `applies-to: shared-cli-spec`
+
+- 対象: `tools/agentops_cli` (`scripts/agentops`) / `tools/agentops_monitor` (`scripts/agentops-watch`) / 関連 docs (`docs/10-cli-wrapper.md` / `docs/11-monitoring-cli.md`)
+- 役割: cron / hook / shell scripts / 他 repo から呼ばれる **集約点** として、Discord 通知 / archive 後処理 / monitoring 集計 / cross-model 委譲 / project localization 等を提供する
+- 別 AI への指針: **実装本体は touch せず、共有 CLI を呼ぶだけ**。`applies-to: shared-cli-spec` の docs は agentops が他層へ提供する CLI 契約として読み、host や他 repo の運用に組み込む。詳細は [docs/00-glossary.md](docs/00-glossary.md) §shared-cli-spec パターン 参照
+
+### (c) 雛形配布元 (template source) — `applies-to: agentops-internal` (反映用 source)
+
+- 対象: `config/claude/CLAUDE.md` (→ `~/.claude/CLAUDE.md` 反映用) / `config/codex/AGENTS.md` (→ `~/.codex/AGENTS.md` 反映用) / `config/harness.yml` / `config/cron.example` 等
+- 役割: グローバル設定や cron / hook 雛形の配布 source として機能する
+- 別 AI への指針: これらを変更しただけでは実グローバル設定には反映されません。明示反映が必要であり、反映時は対象 CLI の現在仕様・公式 docs・実環境・既存設定を確認して調整する
+
+### docs 区分の早見表
+
+| `applies-to` | 意味 | 例 |
+| --- | --- | --- |
+| `global` | 全 project / 全 CLI に適用される設計思想 (グローバル設定 反映候補) | `01-philosophy` / `02-workflow` / `18-notification-strategy` / `19-project-localization` |
+| `shared-cli-spec` | agentops repo 内 CLI の仕様 (host / 他 repo から呼ばれる) | `10-cli-wrapper` / `11-monitoring-cli` |
+| `agentops-internal` | agentops repo 自身の内部運用 docs (反映対象外) | `08-config-templates` / `13-design-evaluation` / `15-reference-kit-structure` / `16-global-settings-application-checklist` |
+| `template-source` | 雛形・候補カタログの md ファイル自体 (`templates/<...>.md` / `rules/catalog.md` 等) への予約値 | (`docs/` に該当無し。雛形・カタログ運用について書いた meta docs (例: `docs/14` / `docs/15`) は `agentops-internal`) |
 
 ## 記録先の使い分け
 

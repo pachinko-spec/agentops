@@ -3,6 +3,7 @@ last_reviewed: 2026-04-28
 next_review_by: 2026-07-31
 reviewer: pachinko-spec
 language: ja
+applies-to: global
 scope: glossary
 ---
 
@@ -64,6 +65,38 @@ rg -n "\bharness\b|harness spec|harness engineering" docs/12-harness-engineering
 - **orchestrator (主 orchestrator / orchestrator_frontier)**: 決定権を持つ主モデル。日本語で言及するときは `主 orchestrator`、`config/model-catalog.yml` のロール名としては `orchestrator_frontier`、複数形は `orchestrators`。agentops では Claude Code / Anthropic 系 frontier reasoning model または Codex / OpenAI 系 frontier reasoning model のいずれかが候補。実 model id は固定せず、使用直前に公式 docs と CLI の現在仕様で確認する（`config/model-catalog.yml` の `model_id: null` 方針に整合）。内部参照: [docs/04-model-routing.md](./04-model-routing.md), [docs/05-review-policy.md](./05-review-policy.md)。
 - **cross-review**: 主 orchestrator とは別系列・別 CLI・別モデルファミリーの `review_frontier` で設計や差分を確認するレビュー方式（行為・運用名）。所見の採否・修正範囲・延期・統合判断は主 orchestrator が持つ。内部参照: [docs/05-review-policy.md](./05-review-policy.md), [docs/04-model-routing.md](./04-model-routing.md) §cross-review の選び方。
 - **cross-model-delegate**: cross-review を起動する CLI ラッパ名。実体は `scripts/agentops delegate --to <別系列> --role review_frontier --effort high --input <ファイル>` で、run 記録は `.agentops/runs/<run_id>/` 配下に保存される。`run_id` は `--run-id` で明示しない場合 `<JST タイムスタンプ>-<to>-<role>` 形式（`%Y%m%dT%H%M%S+0900-<to>-<role>`、実装は `tools/agentops_cli/__main__.py:339` 周辺）。内部参照: [docs/10-cli-wrapper.md](./10-cli-wrapper.md)。
+
+## docs 分類 / リポジトリ責務
+
+- **applies-to (frontmatter field)**: 各 `docs/*.md` が「どこへ適用される設計か」を機械可読に表す frontmatter フィールド。別 AI エージェントが当 repo の docs を読んだとき、グローバル設定への反映候補か、agentops repo 内部運用向けか、shared CLI 仕様か、雛形カタログかを誤判定なく分類できるようにする。値は次の 4 種に固定する（`templates/` / `rules/` / `skills/` / `workflows/` 配下の md には現状未付与だが、用語としては予約）:
+  - **`global`**: 全 project / 全 CLI に適用される設計思想。グローバル設定 (`~/.claude/` / `~/.codex/`) への反映候補となる。例: `01-philosophy` / `02-workflow` / `18-notification-strategy` / `19-project-localization`。
+  - **`shared-cli-spec`**: agentops repo 内 CLI (`scripts/agentops` / `scripts/agentops-watch` 等) の仕様で、host や他 repo から呼ばれる。別 AI への指針は「**実装本体は touch せず、共有 CLI を呼ぶだけ**」。例: `10-cli-wrapper` / `11-monitoring-cli`。
+  - **`agentops-internal`**: agentops repo 自身の内部運用 docs。グローバル設定や他プロジェクトへの反映対象外。例: `08-config-templates` / `13-design-evaluation` / `14-real-project-template-policy` / `15-reference-kit-structure` / `16-global-settings-application-checklist` / `17-cross-reference`。
+  - **`template-source`**: 雛形 / 候補カタログの **md ファイル自体** (`templates/<...>.md` / `rules/catalog.md` / `skills/catalog.md` / `workflows/catalog.md` 等) に直接付与する予約値。`docs/` 配下で雛形・カタログ運用について説明する **meta docs** (例: [`docs/14-real-project-template-policy.md`](./14-real-project-template-policy.md) / [`docs/15-reference-kit-structure.md`](./15-reference-kit-structure.md)) は本 repo の運用方針を述べる internal docs として `agentops-internal` を付与する（「テンプレート運用について書いた agentops 内部 docs」と「テンプレート md 自体」を区別する）。本リスト時点で `docs/` 配下に該当無し（用語のみ予約、将来 `templates/` 内 md 等に拡張する場合に使う）。
+- **三役 (Trinity)**: agentops repo が同時に担う 3 つの責務。docs / config / scripts / tools の置き場所と「どれが他層から呼ばれる入口で、どれが反映候補で、どれが内部運用か」を 1 つの語で系統化する。
+  - **(a) 設計思想カタログ (catalog)**: `docs/` (`applies-to: global` のもの) / `rules/` / `skills/` / `workflows/` / `templates/`。別 AI が判断して採用する候補集として機能する。
+  - **(b) 共有 CLI / ライブラリ (shared CLI)**: `tools/agentops_cli` (`scripts/agentops`) / `tools/agentops_monitor` (`scripts/agentops-watch`)。host や他 repo から呼ばれる集約点。`applies-to: shared-cli-spec` の docs はこの実体の仕様を規定する。
+  - **(c) 雛形配布元 (template source)**: `config/claude/CLAUDE.md` / `config/codex/AGENTS.md` / `config/harness.yml` / `config/cron.example` 等。`~/.claude/` / `~/.codex/` などのグローバル設定への反映 source として機能する（変更しただけでは実反映されない、明示反映が必要）。
+- **shared-cli-spec パターン**: 「**思想は global、実装は agentops の共有 CLI、各層は CLI を呼ぶだけ**」という多層責務分離パターン。Discord 通知・archive 後処理・monitoring 集計など、host 全体で共通の運用を扱う設計に適用する。
+  - 思想層 (`applies-to: global`): kind / channel / DbC / rate-limit / 起動契約を docs/ で固定する (例: `docs/18-notification-strategy.md`)。
+  - 実装層 (`applies-to: shared-cli-spec`): 共有 CLI 仕様を docs/ で固定し、実体は `tools/agentops_*` に持つ (例: `docs/11-monitoring-cli.md` + `tools/agentops_monitor`)。
+  - 利用層 (host / 他 repo / hook / cron / shell scripts): 共有 CLI を呼び出すだけで、実装本体を touch しない。
+  - 別 AI への指針: 「実装が agentops repo 内にあるからといって、それが agentops 内部専用とは限らない」「`applies-to: shared-cli-spec` の docs は agentops が他層へ提供する CLI 契約として読む」。
+
+検証コマンド:
+
+```sh
+# 全 docs に applies-to が付与されているか (出力なしが正)
+grep -L 'applies-to:' docs/*.md
+
+# 各値の分布 (合計を集計)
+grep -h '^applies-to:' docs/*.md | sort | uniq -c
+
+# 想定外の値が紛れ込んでいないか
+grep -h '^applies-to:' docs/*.md | sort -u
+```
+
+→ 値は `global` / `shared-cli-spec` / `agentops-internal` / `template-source` のみ。
 
 ## ツール / プロトコル
 
