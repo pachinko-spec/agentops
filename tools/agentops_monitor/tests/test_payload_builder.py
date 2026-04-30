@@ -71,24 +71,35 @@ class BuildDigestEmbedTests(unittest.TestCase):
 
     def test_daily_title_format(self) -> None:
         payload = build_digest_embed("daily", self._report(), _NOW)
-        self.assertEqual(payload["embeds"][0]["title"], "daily digest — 2026-04-29")
+        # title に kind 別 emoji prefix を付ける (📊 daily / 📈 weekly / 🗓️ monthly)
+        self.assertEqual(payload["embeds"][0]["title"], "📊 daily digest — 2026-04-29")
 
     def test_weekly_title_format(self) -> None:
         payload = build_digest_embed("weekly", self._report(), _NOW)
         # 2026-04-29 (水) は 2026 W18
-        self.assertRegex(payload["embeds"][0]["title"], r"^weekly digest — 2026-W\d{2}$")
+        self.assertRegex(payload["embeds"][0]["title"], r"^📈 weekly digest — 2026-W\d{2}$")
 
     def test_monthly_title_format(self) -> None:
         payload = build_digest_embed("monthly", self._report(), _NOW)
-        self.assertEqual(payload["embeds"][0]["title"], "monthly digest — 2026-04")
+        self.assertEqual(payload["embeds"][0]["title"], "🗓️ monthly digest — 2026-04")
 
     def test_field_includes_required_keys(self) -> None:
+        # signal を含む project (dirty/tasks/handoffs/next-session/stuck) が field に
+        # 出力されること。clean な project は summary に集約される。fixture project は
+        # signal 多数のため field 1 つは確実に出る。
         payload = build_digest_embed("daily", self._report(), _NOW)
-        field_value = payload["embeds"][0]["fields"][0]["value"]
+        # project field は signal 持ちの 1 件 + summary なし (全 project signal あり)
+        signal_field = next(
+            (f for f in payload["embeds"][0]["fields"] if "project:" in f["name"]),
+            None,
+        )
+        self.assertIsNotNone(signal_field, "signal を持つ project field が出るはず")
+        field_value = signal_field["value"]
         self.assertIn("branch:", field_value)
         self.assertIn("open tasks:", field_value)
         self.assertIn("handoffs:", field_value)
-        self.assertIn("next-session:", field_value)
+        # next-session: yes は次のように bullet 化される (yes 時のみ表示)
+        self.assertIn("next-session: yes", field_value)
         self.assertIn("dirty:", field_value)
         self.assertIn("stuck runs:", field_value)
 
@@ -112,13 +123,13 @@ class BuildDigestEmbedTests(unittest.TestCase):
     # --- --message 拡張のテスト (PR-C で追加) ---
 
     def test_message_added_to_embed_fields(self) -> None:
-        """--message が "audit log" field として末尾に追加される。"""
+        """--message が "📜 audit log" field として末尾に追加される。"""
         payload = build_digest_embed("daily", self._report(), _NOW, message="[smoke] OK")
         fields = payload["embeds"][0]["fields"]
-        self.assertEqual(fields[-1]["name"], "audit log")
+        self.assertEqual(fields[-1]["name"], "📜 audit log")
         self.assertEqual(fields[-1]["value"], "[smoke] OK")
-        # project field も維持されている
-        self.assertTrue(any(f["name"].startswith("project:") for f in fields))
+        # project field も維持されている (head emoji + "project:" を含む name)
+        self.assertTrue(any("project:" in f["name"] for f in fields))
 
     def test_message_sanitized_in_digest(self) -> None:
         """--message に含まれる @everyone / <@id> 等が無害化される。"""
@@ -126,7 +137,7 @@ class BuildDigestEmbedTests(unittest.TestCase):
             "weekly", self._report(), _NOW, message="ping @everyone <@123456> now"
         )
         audit_field = payload["embeds"][0]["fields"][-1]
-        self.assertEqual(audit_field["name"], "audit log")
+        self.assertEqual(audit_field["name"], "📜 audit log")
         self.assertNotIn("@everyone", audit_field["value"])
         self.assertNotIn("<@123456>", audit_field["value"])
 
@@ -140,19 +151,19 @@ class BuildDigestEmbedTests(unittest.TestCase):
         self.assertTrue(audit_field["value"].endswith("…"))
 
     def test_no_message_preserves_existing_shape(self) -> None:
-        """message 無しは "audit log" field を含めない (regression test)。"""
+        """message 無しは "📜 audit log" field を含めない (regression test)。"""
         payload = build_digest_embed("daily", self._report(), _NOW)
         fields = payload["embeds"][0]["fields"]
         names = [f["name"] for f in fields]
-        self.assertNotIn("audit log", names)
-        # 元の project field は残る
-        self.assertTrue(any(n.startswith("project:") for n in names))
+        self.assertNotIn("📜 audit log", names)
+        # signal を持つ project field は残る (head emoji + project: prefix)
+        self.assertTrue(any("project:" in n for n in names))
 
     def test_empty_message_treated_as_no_message(self) -> None:
-        """空文字 message も "audit log" field を作らない。"""
+        """空文字 message も "📜 audit log" field を作らない。"""
         payload = build_digest_embed("daily", self._report(), _NOW, message="")
         names = [f["name"] for f in payload["embeds"][0]["fields"]]
-        self.assertNotIn("audit log", names)
+        self.assertNotIn("📜 audit log", names)
 
     def test_message_reserves_slot_when_at_field_limit(self) -> None:
         """既存 project が 25 件あっても message 指定時は 24 + audit log = 25 になる。"""
@@ -162,7 +173,7 @@ class BuildDigestEmbedTests(unittest.TestCase):
         payload = build_digest_embed("daily", report, _NOW, message="[smoke] cap")
         fields = payload["embeds"][0]["fields"]
         self.assertLessEqual(len(fields), 25)
-        self.assertEqual(fields[-1]["name"], "audit log")
+        self.assertEqual(fields[-1]["name"], "📜 audit log")
 
 
 class BuildAnttimeEmbedTests(unittest.TestCase):

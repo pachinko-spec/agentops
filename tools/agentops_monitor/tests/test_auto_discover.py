@@ -262,27 +262,32 @@ class TestNotifyCmdWithAutoDiscover(_HomePatchTestCase):
         return rc, out.getvalue(), err.getvalue()
 
     def test_dry_run_with_auto_discover_shows_4_root_projects(self) -> None:
-        # 4 root に .agentops/ を作るが、git init はしない。check_project は git
-        # 失敗を error として記録するが、auto-discover で拾った非 git directory でも
-        # `.agentops/` 集計 (tasks / handoffs / runs / next-session) は実行する。
-        self._make_agentops(self.home / ".claude")
-        self._make_agentops(self.home / ".codex")
-        self._make_agentops(self.home / "agentops")
-        self._make_agentops(self.home / "dev" / "foo")
+        # 4 root に .agentops/ を作り、各 project に signal を持たせる
+        # (open tasks 1 件) ことで signal フィルタを通過させ、4 project すべて
+        # field に出ることを確認する。signal が無い project は summary に集約される
+        # 動作は別 test で検証する。
+        for sub in (".claude", ".codex", "agentops", "dev/foo"):
+            base = self.home / sub
+            self._make_agentops(base)
+            (base / ".agentops" / "tasks").mkdir(exist_ok=True)
+            (base / ".agentops" / "tasks" / "01.md").write_text("# task\n", encoding="utf-8")
 
         rc, out, _ = self._run(
             ["notify", "--kind", "daily", "--auto-discover", "--dry-run"]
         )
         self.assertEqual(rc, 0)
         payload = json.loads(out)
-        # embed 1 個 / fields は 4 project ぶん (project: <name> という field name)。
         self.assertEqual(len(payload["embeds"]), 1)
-        field_names = [f["name"] for f in payload["embeds"][0]["fields"]]
-        self.assertEqual(len(field_names), 4)
+        # signal を持つ project field 4 件 (head emoji + project: prefix)。summary は
+        # signal なし project が 0 のため出ない。
+        project_field_names = [
+            f["name"] for f in payload["embeds"][0]["fields"] if "project:" in f["name"]
+        ]
+        self.assertEqual(len(project_field_names), 4)
         for expected in (".claude", ".codex", "agentops", "foo"):
             self.assertTrue(
-                any(expected in name for name in field_names),
-                f"{expected} should appear in field names: {field_names}",
+                any(expected in name for name in project_field_names),
+                f"{expected} should appear in field names: {project_field_names}",
             )
 
     def test_auto_discover_collects_agentops_state_in_non_git_dirs(self) -> None:
@@ -309,22 +314,28 @@ class TestNotifyCmdWithAutoDiscover(_HomePatchTestCase):
             (f for f in fields if ".claude" in f["name"]), None
         )
         self.assertIsNotNone(claude_field, f"claude field missing: {fields}")
-        # field value 内に open tasks / handoffs の数字が含まれる。
+        # field value 内に open tasks / handoffs の数字が含まれる (絵文字 prefix 付き)。
         value = claude_field["value"]
         self.assertIn("open tasks: 1", value)
         self.assertIn("handoffs: 1", value)
+        # 絵文字 prefix も付与されている
+        self.assertIn("📋", value)
 
     def test_dry_run_with_auto_discover_zero_match_emits_empty_embed(self) -> None:
-        # 0 件マッチでも payload は生成される (embed.fields=[] / title は daily digest)。
+        # 0 件マッチでも payload は生成される。fields は summary 1 件
+        # ("no projects discovered")、title は kind 別 emoji 付き daily digest。
         rc, out, _ = self._run(
             ["notify", "--kind", "daily", "--auto-discover", "--dry-run"]
         )
         self.assertEqual(rc, 0)
         payload = json.loads(out)
         self.assertEqual(len(payload["embeds"]), 1)
-        self.assertEqual(payload["embeds"][0]["fields"], [])
-        # title は daily digest として残る。
-        self.assertTrue(payload["embeds"][0]["title"].startswith("daily digest"))
+        fields = payload["embeds"][0]["fields"]
+        self.assertEqual(len(fields), 1)
+        self.assertEqual(fields[0]["name"], "✅ summary")
+        self.assertIn("no projects discovered", fields[0]["value"])
+        # title は kind 別 emoji + daily digest として出る
+        self.assertIn("daily digest", payload["embeds"][0]["title"])
 
     def test_dry_run_with_projects_and_auto_discover_exits_2(self) -> None:
         # 排他指定は exit 2 + 排他エラーメッセージ。

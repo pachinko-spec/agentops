@@ -519,6 +519,54 @@ def _embed_envelope(embed: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+_DIGEST_KIND_TITLE_EMOJI = {
+    "daily": "📊",
+    "weekly": "📈",
+    "monthly": "🗓️",
+}
+
+
+def _is_non_git_repo_error(err: Any) -> bool:
+    """`not a git repository` error は git 管理外 directory (~/.claude / ~/.codex)
+    で期待される状態であり、user の attention を要求しないため signal から除外する。
+    """
+    return "not a git repository" in str(err)
+
+
+def _project_has_signal(project: dict[str, Any]) -> bool:
+    """project が digest field として表示するに値する signal を持つか判定する。
+
+    signal の定義: 真の errors (非 git は除く) / dirty worktree / open tasks /
+    handoffs / next-session.md 存在 / stuck runs / 既定値を超える ahead-behind
+    divergence のいずれか。
+
+    auto-discover 結果が増える運用 (~/dev/* 配下) で digest が長大化することを防ぐ
+    ため、signal なし (clean) の project は field 出力から除外し、視認性を上げる。
+    """
+    git = project.get("git", {}) or {}
+    ag = project.get("agentops", {}) or {}
+    real_errors = [e for e in (project.get("errors") or []) if not _is_non_git_repo_error(e)]
+    if real_errors:
+        return True
+    if int(git.get("dirty_files", 0) or 0) > 0:
+        return True
+    if int(ag.get("tasks", 0) or 0) > 0:
+        return True
+    if int(ag.get("handoffs", 0) or 0) > 0:
+        return True
+    if ag.get("next_session_md", False):
+        return True
+    if ag.get("runs", {}).get("stuck", []):
+        return True
+    max_behind = int(project.get("max_behind_commits", 10) or 10)
+    max_ahead = int(project.get("max_ahead_commits", 50) or 50)
+    if int(git.get("behind", 0) or 0) > max_behind:
+        return True
+    if int(git.get("ahead", 0) or 0) > max_ahead:
+        return True
+    return False
+
+
 def build_digest_embed(
     kind: str,
     report: dict[str, Any],
@@ -527,23 +575,32 @@ def build_digest_embed(
 ) -> dict[str, Any]:
     """daily / weekly / monthly digest 用 embed payload を構築する。
 
+    signal を持つ project のみを field として出力し、clean な project は ✨ summary
+    field に集約する (auto-discover 結果増加時の視認性確保)。
+
     `message` を渡すと embed の fields 末尾に `audit log` field として追加する。
     audit-*.sh など外部 cron スクリプトが log の要約を embed に乗せるための拡張点。
     Discord embed の field 上限 (25) と value 上限 (1024) は尊重する。message 指定時は
     audit log field の枠を確保するため project field 数を最大 24 件に制限する。
     """
+    title_emoji = _DIGEST_KIND_TITLE_EMOJI.get(kind, "")
     if kind == "daily":
-        title = f"daily digest — {now_jst.strftime('%Y-%m-%d')}"
+        title_body = f"daily digest — {now_jst.strftime('%Y-%m-%d')}"
     elif kind == "weekly":
         iso_year, iso_week, _ = now_jst.isocalendar()
-        title = f"weekly digest — {iso_year}-W{iso_week:02d}"
+        title_body = f"weekly digest — {iso_year}-W{iso_week:02d}"
     elif kind == "monthly":
-        title = f"monthly digest — {now_jst.strftime('%Y-%m')}"
+        title_body = f"monthly digest — {now_jst.strftime('%Y-%m')}"
     else:
         raise ValueError(f"build_digest_embed: not a digest kind: {kind}")
+    title = f"{title_emoji} {title_body}".strip()
+
+    all_projects = report.get("projects", [])
+    signal_projects = [p for p in all_projects if _project_has_signal(p)]
+    clean_count = len(all_projects) - len(signal_projects)
 
     fields: list[dict[str, Any]] = []
-    for project in report.get("projects", []):
+    for project in signal_projects:
         name_raw = str(project.get("name", ""))
         git = project.get("git", {}) or {}
         ag = project.get("agentops", {}) or {}
@@ -553,22 +610,57 @@ def build_digest_embed(
         handoffs = int(ag.get("handoffs", 0) or 0)
         next_session = bool(ag.get("next_session_md", False))
         stuck_count = len(ag.get("runs", {}).get("stuck", []) or [])
+        behind = int(git.get("behind", 0) or 0)
+        ahead = int(git.get("ahead", 0) or 0)
 
-        value_lines = [
-            f"branch: {sanitize_mention_text(branch_raw) or '(unknown)'}",
-            f"open tasks: {open_tasks}",
-            f"handoffs: {handoffs}",
-            f"next-session: {'yes' if next_session else 'no'}",
-        ]
+        # signal あり = warning。非 git 以外の errors があれば error 寄せ。
+        real_errors = [e for e in (project.get("errors") or []) if not _is_non_git_repo_error(e)]
+        head_emoji = "🔴" if real_errors else "⚠️"
+
+        value_lines: list[str] = []
+        value_lines.append(f"🌿 branch: {sanitize_mention_text(branch_raw) or '(unknown)'}")
+        if open_tasks:
+            value_lines.append(f"📋 open tasks: {open_tasks}")
+        if handoffs:
+            value_lines.append(f"📝 handoffs: {handoffs}")
+        if next_session:
+            value_lines.append("🔄 next-session: yes")
         if dirty:
-            value_lines.append(f"dirty: {dirty}")
+            value_lines.append(f"🛠 dirty: {dirty} file(s)")
         if stuck_count:
-            value_lines.append(f"stuck runs: {stuck_count}")
+            value_lines.append(f"⏳ stuck runs: {stuck_count}")
+        if behind:
+            value_lines.append(f"⬇ behind: {behind} commit(s)")
+        if ahead:
+            value_lines.append(f"⬆ ahead: {ahead} commit(s)")
+        for err in real_errors:
+            value_lines.append(f"❗ error: {sanitize_mention_text(str(err))}")
 
         fields.append(
             {
-                "name": _truncate(f"project: {sanitize_mention_text(name_raw)}", _EMBED_TITLE_LIMIT),
+                "name": _truncate(
+                    f"{head_emoji} project: {sanitize_mention_text(name_raw)}",
+                    _EMBED_TITLE_LIMIT,
+                ),
                 "value": _truncate("\n".join(value_lines), _EMBED_FIELD_VALUE_LIMIT),
+                "inline": False,
+            }
+        )
+
+    # signal なし (clean) の project は count のみ要約 field に集約。
+    if clean_count > 0 or not all_projects:
+        if not signal_projects:
+            summary_value = (
+                f"✨ all {clean_count} project(s) clean — no actions required"
+                if clean_count > 0
+                else "no projects discovered"
+            )
+        else:
+            summary_value = f"✨ {clean_count} other project(s) clean"
+        fields.append(
+            {
+                "name": "✅ summary",
+                "value": _truncate(summary_value, _EMBED_FIELD_VALUE_LIMIT),
                 "inline": False,
             }
         )
@@ -578,7 +670,7 @@ def build_digest_embed(
     if message:
         sanitized_message = sanitize_mention_text(message)
         audit_log_field = {
-            "name": "audit log",
+            "name": "📜 audit log",
             "value": _truncate(sanitized_message, _EMBED_FIELD_VALUE_LIMIT),
             "inline": False,
         }

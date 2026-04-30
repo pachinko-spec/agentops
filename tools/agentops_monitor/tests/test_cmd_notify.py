@@ -116,7 +116,7 @@ class CmdNotifyDryRunTests(unittest.TestCase):
         payload = json.loads(out)
         fields = payload["embeds"][0]["fields"]
         # 末尾に audit log field が存在
-        self.assertEqual(fields[-1]["name"], "audit log")
+        self.assertEqual(fields[-1]["name"], "📜 audit log")
         self.assertEqual(fields[-1]["value"], "[sanity-check] OK")
         # allowed_mentions は維持
         self.assertEqual(payload["allowed_mentions"], {"parse": []})
@@ -133,7 +133,7 @@ class CmdNotifyDryRunTests(unittest.TestCase):
         self.assertEqual(rc, 0)
         payload = json.loads(out)
         names = [f["name"] for f in payload["embeds"][0]["fields"]]
-        self.assertNotIn("audit log", names)
+        self.assertNotIn("📜 audit log", names)
 
     def test_dry_run_does_not_modify_rate_state(self) -> None:
         """dry-run は ANT_TIME rate-limit state を更新しない (preview の副作用回避)。"""
