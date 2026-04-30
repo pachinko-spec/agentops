@@ -519,6 +519,60 @@ def _embed_envelope(embed: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+_DIGEST_KIND_TITLE_EMOJI = {
+    "daily": "📊",
+    "weekly": "📈",
+    "monthly": "🗓️",
+}
+
+
+def _is_non_git_repo_error(err: Any) -> bool:
+    """`not a git repository` error は git 管理外 directory (~/.claude / ~/.codex)
+    で期待される状態であり、user の attention を要求しないため signal から除外する。
+    """
+    return "not a git repository" in str(err)
+
+
+def _project_has_signal(project: dict[str, Any]) -> bool:
+    """project が digest 通知に出すに値する signal を持つか判定する。
+
+    signal の定義 (= 報告すべき状態):
+      - 真の errors (非 git は除く)
+      - dirty worktree
+      - open tasks
+      - handoffs
+      - stuck runs
+      - 既定値を超える ahead-behind divergence
+
+    `next-session.md` の存在は signal に **含めない**: ~/.claude / ~/.codex のような
+    global 運用 directory は常に next-session.md を持つが毎日報告する必要はない。
+    next-session 自体は活動の証跡だが、それだけで通知価値があるわけではない。
+
+    auto-discover 結果が増える運用 (~/dev/* 配下) で digest が長大化することを防ぐ
+    ため、signal なし (clean) の project は出力から除外し summary に集約する。
+    """
+    git = project.get("git", {}) or {}
+    ag = project.get("agentops", {}) or {}
+    real_errors = [e for e in (project.get("errors") or []) if not _is_non_git_repo_error(e)]
+    if real_errors:
+        return True
+    if int(git.get("dirty_files", 0) or 0) > 0:
+        return True
+    if int(ag.get("tasks", 0) or 0) > 0:
+        return True
+    if int(ag.get("handoffs", 0) or 0) > 0:
+        return True
+    if ag.get("runs", {}).get("stuck", []):
+        return True
+    max_behind = int(project.get("max_behind_commits", 10) or 10)
+    max_ahead = int(project.get("max_ahead_commits", 50) or 50)
+    if int(git.get("behind", 0) or 0) > max_behind:
+        return True
+    if int(git.get("ahead", 0) or 0) > max_ahead:
+        return True
+    return False
+
+
 def build_digest_embed(
     kind: str,
     report: dict[str, Any],
@@ -527,23 +581,35 @@ def build_digest_embed(
 ) -> dict[str, Any]:
     """daily / weekly / monthly digest 用 embed payload を構築する。
 
+    signal を持つ project のみを field として出力し、clean な project は ✨ summary
+    field に集約する (auto-discover 結果増加時の視認性確保)。
+
     `message` を渡すと embed の fields 末尾に `audit log` field として追加する。
     audit-*.sh など外部 cron スクリプトが log の要約を embed に乗せるための拡張点。
     Discord embed の field 上限 (25) と value 上限 (1024) は尊重する。message 指定時は
     audit log field の枠を確保するため project field 数を最大 24 件に制限する。
     """
+    title_emoji = _DIGEST_KIND_TITLE_EMOJI.get(kind, "")
     if kind == "daily":
-        title = f"daily digest — {now_jst.strftime('%Y-%m-%d')}"
+        title_body = f"daily digest — {now_jst.strftime('%Y-%m-%d')}"
     elif kind == "weekly":
         iso_year, iso_week, _ = now_jst.isocalendar()
-        title = f"weekly digest — {iso_year}-W{iso_week:02d}"
+        title_body = f"weekly digest — {iso_year}-W{iso_week:02d}"
     elif kind == "monthly":
-        title = f"monthly digest — {now_jst.strftime('%Y-%m')}"
+        title_body = f"monthly digest — {now_jst.strftime('%Y-%m')}"
     else:
         raise ValueError(f"build_digest_embed: not a digest kind: {kind}")
+    title = f"{title_emoji} {title_body}".strip()
 
-    fields: list[dict[str, Any]] = []
-    for project in report.get("projects", []):
+    all_projects = report.get("projects", [])
+    signal_projects = [p for p in all_projects if _project_has_signal(p)]
+    clean_count = len(all_projects) - len(signal_projects)
+
+    # Discord embed.description は markdown header (## / ###) を h2/h3 として render
+    # する (2023-12 以降の仕様)。field 構造より見出しサイズ調整がしやすいため、
+    # project セクションは description で構築する。
+    sections: list[str] = []
+    for project in signal_projects:
         name_raw = str(project.get("name", ""))
         git = project.get("git", {}) or {}
         ag = project.get("agentops", {}) or {}
@@ -551,49 +617,70 @@ def build_digest_embed(
         dirty = int(git.get("dirty_files", 0) or 0)
         open_tasks = int(ag.get("tasks", 0) or 0)
         handoffs = int(ag.get("handoffs", 0) or 0)
-        next_session = bool(ag.get("next_session_md", False))
         stuck_count = len(ag.get("runs", {}).get("stuck", []) or [])
+        behind = int(git.get("behind", 0) or 0)
+        ahead = int(git.get("ahead", 0) or 0)
 
-        value_lines = [
-            f"branch: {sanitize_mention_text(branch_raw) or '(unknown)'}",
-            f"open tasks: {open_tasks}",
-            f"handoffs: {handoffs}",
-            f"next-session: {'yes' if next_session else 'no'}",
-        ]
+        real_errors = [e for e in (project.get("errors") or []) if not _is_non_git_repo_error(e)]
+        head_emoji = "🔴" if real_errors else "⚠️"
+
+        bullet_lines: list[str] = []
+        bullet_lines.append(f"🌿 branch: `{sanitize_mention_text(branch_raw) or '(unknown)'}`")
+        if open_tasks:
+            bullet_lines.append(f"📋 open tasks: **{open_tasks}**")
+        if handoffs:
+            bullet_lines.append(f"📝 handoffs: **{handoffs}**")
         if dirty:
-            value_lines.append(f"dirty: {dirty}")
+            bullet_lines.append(f"🛠 dirty: **{dirty}** file(s)")
         if stuck_count:
-            value_lines.append(f"stuck runs: {stuck_count}")
+            bullet_lines.append(f"⏳ stuck runs: **{stuck_count}**")
+        if behind:
+            bullet_lines.append(f"⬇ behind: **{behind}** commit(s)")
+        if ahead:
+            bullet_lines.append(f"⬆ ahead: **{ahead}** commit(s)")
+        for err in real_errors:
+            bullet_lines.append(f"❗ error: {sanitize_mention_text(str(err))}")
 
+        # `## 見出し` 形式 (h2 相当の大きさで render される)。project 名は header
+        # 内で表現するため bold (**...**) は使わない (header と二重装飾になるため)。
+        section = f"## {head_emoji} {sanitize_mention_text(name_raw)}\n" + "\n".join(bullet_lines)
+        sections.append(section)
+
+    # signal なし (clean) の project は count のみ summary 行で集約。
+    summary_line: str | None = None
+    if not all_projects:
+        summary_line = "_no projects discovered_"
+    elif not signal_projects:
+        summary_line = f"✨ all **{clean_count}** project(s) clean — no actions required"
+    elif clean_count > 0:
+        summary_line = f"✨ **{clean_count}** other project(s) clean"
+
+    description_parts = list(sections)
+    if summary_line:
+        description_parts.append(summary_line)
+    description = "\n\n".join(description_parts)
+
+    # Discord embed description は最大 4096 文字。最終 truncate を保証。
+    description = _truncate(description, 4096)
+
+    fields: list[dict[str, Any]] = []
+    if message:
+        # audit log は description と独立した枠で表示する (tail 50 が
+        # description 末尾に紛れて見出し階層を崩すのを避けるため field を維持)。
+        sanitized_message = sanitize_mention_text(message)
         fields.append(
             {
-                "name": _truncate(f"project: {sanitize_mention_text(name_raw)}", _EMBED_TITLE_LIMIT),
-                "value": _truncate("\n".join(value_lines), _EMBED_FIELD_VALUE_LIMIT),
+                "name": "📜 audit log",
+                "value": _truncate(sanitized_message, _EMBED_FIELD_VALUE_LIMIT),
                 "inline": False,
             }
         )
 
-    # message があれば audit log field を末尾に追加する。
-    audit_log_field: dict[str, Any] | None = None
-    if message:
-        sanitized_message = sanitize_mention_text(message)
-        audit_log_field = {
-            "name": "audit log",
-            "value": _truncate(sanitized_message, _EMBED_FIELD_VALUE_LIMIT),
-            "inline": False,
-        }
-
-    if audit_log_field is not None:
-        # audit log field の枠を確保するため project fields は (上限 - 1) まで。
-        capped_fields = fields[: _EMBED_FIELDS_LIMIT - 1]
-        capped_fields.append(audit_log_field)
-    else:
-        capped_fields = fields[:_EMBED_FIELDS_LIMIT]
-
     embed: dict[str, Any] = {
         "title": _truncate(title, _EMBED_TITLE_LIMIT),
         "color": _EMBED_COLOR["digest"],
-        "fields": capped_fields,
+        "description": description,
+        "fields": fields,
         "footer": {"text": f"agentops-watch / {now_jst.isoformat(timespec='seconds')}"},
     }
     return _embed_envelope(embed)
@@ -760,7 +847,19 @@ def send_webhook(
     secret URL は引数経由でしか扱わず、log / stdout に出さない。
     """
     data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-    req = request.Request(url, data=data, headers={"Content-Type": "application/json"}, method="POST")
+    # User-Agent を明示しないと urllib の default `Python-urllib/<ver>` が
+    # Cloudflare WAF (Discord の前段) に bot として block され HTTP 403 + error
+    # code 1010 を返す。識別可能な独自 UA を送り Cloudflare の bot fingerprint
+    # heuristics を avoid する。
+    req = request.Request(
+        url,
+        data=data,
+        headers={
+            "Content-Type": "application/json",
+            "User-Agent": "agentops-watch (+https://github.com/pachinko-spec/agentops)",
+        },
+        method="POST",
+    )
     open_func = opener or request.urlopen
     try:
         with open_func(req, timeout=timeout) as response:
