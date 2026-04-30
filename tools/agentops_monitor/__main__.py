@@ -8,7 +8,7 @@ import subprocess
 import sys
 from datetime import date, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 from urllib import error as urllib_error
 from urllib import request
 from zoneinfo import ZoneInfo
@@ -221,34 +221,36 @@ def check_project(project_config: dict[str, Any]) -> dict[str, Any]:
         result["errors"].append("project path does not exist")
         return result
 
+    # auto-discover で ~/.claude / ~/.codex のような Git 管理外 directory を
+    # 監視対象に含めるため、git status 失敗 (非 git repo) でも early return せず
+    # `.agentops/` 集計までは必ず実行する。git error は errors に残し ok=False とする。
     code, status_out, status_err = run_git(project, ["status", "--porcelain=v1", "--branch"])
-    if code != 0:
+    if code == 0:
+        git_status = parse_git_status(status_out)
+        result["git"] = git_status
+        if git_status["dirty_files"] > 0:
+            result["warnings"].append(f"dirty worktree: {git_status['dirty_files']} files")
+
+        code, branch, _ = run_git(project, ["branch", "--show-current"])
+        result["git"]["branch"] = branch if code == 0 else ""
+        if branch == default_branch:
+            result["warnings"].append(f"currently on default branch: {default_branch}")
+
+        # ローカル検証では remote がないこともあるため、divergence 不明は致命扱いしない。
+        code, divergence, _ = run_git(project, ["rev-list", "--left-right", "--count", f"origin/{default_branch}...HEAD"])
+        if code == 0 and divergence:
+            behind_text, ahead_text = divergence.split()
+            behind = int(behind_text)
+            ahead = int(ahead_text)
+            result["git"]["behind"] = behind
+            result["git"]["ahead"] = ahead
+            if behind > max_behind:
+                result["warnings"].append(f"behind origin/{default_branch}: {behind} commits")
+            if ahead > max_ahead:
+                result["warnings"].append(f"ahead of origin/{default_branch}: {ahead} commits")
+    else:
         result["ok"] = False
         result["errors"].append(status_err or "not a git repository")
-        return result
-
-    git_status = parse_git_status(status_out)
-    result["git"] = git_status
-    if git_status["dirty_files"] > 0:
-        result["warnings"].append(f"dirty worktree: {git_status['dirty_files']} files")
-
-    code, branch, _ = run_git(project, ["branch", "--show-current"])
-    result["git"]["branch"] = branch if code == 0 else ""
-    if branch == default_branch:
-        result["warnings"].append(f"currently on default branch: {default_branch}")
-
-    # ローカル検証では remote がないこともあるため、divergence 不明は致命扱いしない。
-    code, divergence, _ = run_git(project, ["rev-list", "--left-right", "--count", f"origin/{default_branch}...HEAD"])
-    if code == 0 and divergence:
-        behind_text, ahead_text = divergence.split()
-        behind = int(behind_text)
-        ahead = int(ahead_text)
-        result["git"]["behind"] = behind
-        result["git"]["ahead"] = ahead
-        if behind > max_behind:
-            result["warnings"].append(f"behind origin/{default_branch}: {behind} commits")
-        if ahead > max_ahead:
-            result["warnings"].append(f"ahead of origin/{default_branch}: {ahead} commits")
 
     result["agentops"] = {
         "runs": check_runs(project, stuck_run_hours),
@@ -295,20 +297,106 @@ def check_freshness(path: Path) -> list[dict[str, Any]]:
     return results
 
 
-def load_projects(args: argparse.Namespace) -> list[dict[str, Any]]:
-    """--projects 設定があれば複数プロジェクトを読み、なければ --project 単体を使う。
+# auto-discover が走査する 4 root を hardcode (docs/18 §多プロジェクト走査ルール)。
+# `~/.claude` `~/.codex` `~/agentops` は固定 root として直接 candidate にし、
+# `~/dev/*` のみ 1 階層 glob 展開する (panic safety: depth 1 を超えない)。
+_DISCOVERY_ROOTS: tuple[Path, ...] = (
+    Path.home() / ".claude",
+    Path.home() / ".codex",
+    Path.home() / "agentops",
+)
+_DEV_GLOB_ROOT: Path = Path.home() / "dev"
 
-    --project が未指定 (None) の場合は cwd (".") にフォールバックする。
-    notify では `--kind alert` で project optional を成立させたいので、引数定義側で
-    default=None にし、ここで集約して fallback を担う。
 
-    `--projects` を明示指定した場合は、ファイル不在や `projects:` エントリ欠如を
-    silent fallback せず例外を上げる (docs/18 §DbC 停止条件: --projects YAML 読み込
-    み失敗は invocation 停止)。呼び出し側 (cmd_check / cmd_notify / _legacy_notify)
-    は FileNotFoundError / ValueError を捕捉して exit 2 に正規化する。
+def iter_discovery_candidates() -> Iterator[Path]:
+    """4 root を浅く walk し、auto-discover 候補 path を yield する。
+
+    `~/.claude` `~/.codex` `~/agentops` はそれぞれ root を直接候補にする。
+    `~/dev/*` は 1 階層のみ glob 展開する (max depth 1, ~/dev/foo まで)。
+    broken symlink / OSError は continue で skip し、root 不在も例外にしない。
     """
-    if args.projects:
-        path = Path(args.projects)
+    for root in _DISCOVERY_ROOTS:
+        try:
+            if root.is_dir():
+                yield root
+        except OSError:
+            # broken symlink / 権限不足など。当該 root は静かに skip する。
+            continue
+    # ~/dev/* は 1 階層 glob 展開 (depth >1 には踏み込まない)。
+    try:
+        if not _DEV_GLOB_ROOT.is_dir():
+            return
+    except OSError:
+        return
+    try:
+        children = list(_DEV_GLOB_ROOT.iterdir())
+    except OSError:
+        return
+    for child in children:
+        try:
+            if child.is_dir():
+                yield child
+        except OSError:
+            continue
+
+
+def is_agentops_project(path: Path) -> bool:
+    """`path/.agentops` が directory として存在する場合のみ True を返す。
+
+    空の `.agentops/` も対象 (ユーザー方針: 対象を絞らず必ず scan)。
+    OSError (権限不足など) は False に丸める。
+    """
+    try:
+        return (path / ".agentops").is_dir()
+    except OSError:
+        return False
+
+
+def discover_projects() -> list[dict[str, Any]]:
+    """auto-discovery の結果を `load_projects()` と同じスキーマ (list[dict]) で返す。
+
+    重複 path は resolve 済み Path で dedupe する (symlink で同一実体を指す経路を統合)。
+    戻り値は path 文字列でソートされた安定順序を保つ。0 件マッチでも空 list を返し、
+    呼び出し側 (cmd_notify) が空 embed 1 通送信などを判断できるようにする。
+    """
+    seen: set[Path] = set()
+    results: list[dict[str, Any]] = []
+    for candidate in iter_discovery_candidates():
+        if not is_agentops_project(candidate):
+            continue
+        try:
+            resolved = candidate.resolve()
+        except OSError:
+            continue
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        results.append({"name": resolved.name, "path": str(resolved)})
+    results.sort(key=lambda x: x["path"])
+    return results
+
+
+def load_projects(args: argparse.Namespace) -> list[dict[str, Any]]:
+    """監視対象プロジェクトの list を、引数の優先順位で組み立てる。
+
+    優先順位:
+      1. `--projects <yaml>` (ファイル明示) — 既存挙動。silent fallback 禁止 DbC を維持し、
+         ファイル不在 / `projects:` エントリ欠如は例外として呼び出し側で exit 2 に正規化する。
+      2. `--auto-discover` — 4 root から `.agentops/` 持ち project を自動列挙する。
+         0 件マッチでも空 list を返し、呼び出し側で空 embed を送るかどうかを判断する。
+      3. `--project <path>` (単数) — 単一プロジェクト指定。
+      4. cwd fallback (".")  — `--project` も未指定の場合の最後の砦。
+
+    `--projects` と `--auto-discover` は排他。両方指定された場合は ValueError を上げる。
+    notify では `--kind alert` で project を optional にする要件があるため、
+    `--project` の default は None にしておき、ここで集約して fallback を担う。
+    """
+    projects_path = args.projects
+    auto_discover = bool(getattr(args, "auto_discover", False))
+    if projects_path and auto_discover:
+        raise ValueError("--projects と --auto-discover は同時指定できません (排他)")
+    if projects_path:
+        path = Path(projects_path)
         if not path.exists():
             raise FileNotFoundError(f"--projects file not found: {path}")
         config = load_simple_config(path)
@@ -316,6 +404,8 @@ def load_projects(args: argparse.Namespace) -> list[dict[str, Any]]:
         if not projects:
             raise ValueError(f"--projects file has no 'projects' entries: {path}")
         return projects
+    if auto_discover:
+        return discover_projects()
     project = args.project or "."
     return [{"name": Path(project).resolve().name, "path": project}]
 
@@ -877,6 +967,15 @@ def build_parser() -> argparse.ArgumentParser:
         """
         target.add_argument("--project", default=None)
         target.add_argument("--projects")
+        target.add_argument(
+            "--auto-discover",
+            action="store_true",
+            help=(
+                "~/.claude/.agentops, ~/.codex/.agentops, ~/agentops/.agentops, "
+                "~/dev/*/.agentops を浅く走査して digest 対象を自動列挙する。"
+                "--projects と排他。"
+            ),
+        )
         target.add_argument("--freshness", default="config/freshness-sources.yml")
 
     check = sub.add_parser("check", help="check local project state")
