@@ -1,55 +1,69 @@
-# agentops-watch notify 用 cron 雛形 (実反映前のコメントつきサンプル)。
+# agentops-watch + cron wrapper の運用 cron 例 (3-tier 構成)。
 #
 # このファイルは crontab に直接適用されません。実反映するには、必要な行を
-# `crontab -e` でユーザー crontab に **手動コピー** してください。実反映は別 plan
-# (B / C) のスコープで、本 sample は contract の証跡として残します。
+# `crontab -e` でユーザー crontab に **手動コピー** してください。
 #
 # 設計思想は docs/18-notification-strategy.md、CLI 仕様は docs/11-monitoring-cli.md
 # を参照してください。
 #
 # ## 前提
 #
-# - timezone は host 設定 (`Asia/Tokyo`) を想定。systemd timer 派は `OnCalendar=` で
-#   同等表現にしてください。
+# - timezone は host 設定 (`Asia/Tokyo`) を想定。systemd timer 派は `OnCalendar=`
+#   で同等表現にしてください。
 # - Webhook URL は kind 別の env (`DISCORD_WEBHOOK_URL_{DAILLY,WEEKLY,MONTHLY,ANT_TIME}`)
 #   から読みます。値はリポジトリに置かず、`~/.bashrc` などの shell profile で export
 #   してください。env 名は本ファイルでも参照しますが、env の **値 (実 URL)** を本ファイル
 #   に書かないこと。
-# - cron 経由の起動では env が引き継がれない場合があります。crontab の先頭に
-#   `BASH_ENV=$HOME/.bashrc` を入れるか、wrapper script で env を読み直してください。
+# - cron 経由の起動では env が引き継がれないため、crontab の先頭に `BASH_ENV=$HOME/.bashrc`
+#   を入れることを **必須** としてください。各 wrapper script は内部で `source` しません。
 #
-# ## 例
+# ## 3-tier 構成
 #
-#   # 朝 9:10 に DAILLY digest (~/dev/ 配下プロジェクトの未完了 task / handoff / dirty)
-#   # 10 9 * * * /home/<user>/agentops/scripts/agentops-watch notify \
-#   #   --kind daily --projects /home/<user>/agentops/config/projects.yml
+# - **daily**: CLI のみで軽量集計 (Claude 起動なし)。auto-discover で 4 root を scan。
+# - **weekly**: `claude -p /weekly-audit` を起動 (timeout 1800s)、tail 50 を `--message` に。
+# - **monthly**: `claude -p /monthly-audit` を起動 (timeout 2400s)、quarterly 吸収。
 #
-#   # 月曜 9:45 に WEEKLY 集計
-#   # 45 9 * * 1 /home/<user>/agentops/scripts/agentops-watch notify \
-#   #   --kind weekly --projects /home/<user>/agentops/config/projects.yml
+# ## crontab 例 (本 sample を `crontab -e` で手動コピー)
 #
-#   # 月初 11:00 に MONTHLY 集計 + archive サマリ
-#   # 0 11 1 * * /home/<user>/agentops/scripts/agentops-watch notify \
-#   #   --kind monthly --projects /home/<user>/agentops/config/projects.yml
+#   BASH_ENV=$HOME/.bashrc
+#
+#   # daily: 朝 9:10、軽量集計のみ
+#   10 9 * * *  /home/<user>/agentops/scripts/audit-daily.sh
+#
+#   # weekly: 月曜 9:00、claude -p /weekly-audit + agentops 設計思想ベースの中量レビュー
+#   0 9 * * 1   /home/<user>/agentops/scripts/audit-weekly.sh
+#
+#   # monthly: 月初 1 日 11:00、claude -p /monthly-audit + 重量監査 (quarterly 吸収)
+#   0 11 1 * *  /home/<user>/agentops/scripts/audit-monthly.sh
+#
+# 旧 quarterly cron (`0 9 1 1,4,7,10 * /home/<user>/bin/audit-quarterly.sh`) は
+# 廃止し、context7 重量 freshness 観点は monthly 側 skill (`/monthly-audit`) が吸収します。
 #
 # ## 動作確認 (実反映の前に)
 #
-#   scripts/agentops-watch notify --kind daily \
-#     --projects config/projects.yml --dry-run
-#   scripts/agentops-watch notify --kind weekly \
-#     --projects config/projects.yml --dry-run
-#   scripts/agentops-watch notify --kind monthly \
-#     --projects config/projects.yml --dry-run
+#   # daily wrapper を env を空にして fail-soft 確認
+#   DISCORD_WEBHOOK_URL_DAILLY= bash scripts/audit-daily.sh
+#   ls -la ~/.cache/agentops-watch/logs/audit-daily-*.log
+#
+#   # weekly / monthly は実 skill 起動を伴うため、本番投入前に手動 1 回実行で確認
+#   bash scripts/audit-weekly.sh
+#   bash scripts/audit-monthly.sh
+#
+#   # CLI 単体の dry-run (auto-discover で 4 root 走査)
+#   scripts/agentops-watch notify --kind daily --auto-discover --dry-run
 #
 # ## エラーハンドリング契約 (docs/18 §DbC との関係)
 #
 # - 対応 envvar 未設定時は CLI が exit 2 で停止します (silent skip しない)。
+#   wrapper は `|| true` で fail-soft、cron 連発防止。
 # - HTTP 429 / 5xx / DNS / connect timeout 等のネットワークエラーは exit 2。
 # - HTTP 429 の Retry-After は `~/.cache/agentops-watch/anttime-rate.json` に記録され、
 #   次回 cron 起動で在效中なら ANT_TIME 系 kind は skip されます (digest kind は影響なし)。
 #
-# ## SECRET
+# ## 注意事項
 #
 # - Webhook URL を本ファイル (もしくは crontab の値) に **絶対に書かない**。env 経由のみ。
+# - 各 wrapper は冒頭で `unset ANTHROPIC_API_KEY` を実行し、Max/Pro OAuth 経路を強制。
+#   API 課金経路への流入を防ぎます (旧 audit-weekly.sh 系列の `--bare 不使用` 注記と整合)。
 # - cron 出力の stdout / stderr が mail として届く環境では、CLI 側は URL を log に出さない
-#   設計ですが、誤って `set -x` 等で展開されないよう wrapper には注意してください。
+#   設計ですが、`set -x` を絶対に有効化しないこと。
