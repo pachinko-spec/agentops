@@ -1,11 +1,13 @@
 ---
 task-id: 02-skills-weekly-monthly-audit
 plan-id: 2026-04-30-discord-cron-3tier-redesign
-status: completed
+status: pending-merge
 branch: claude/discord-cron-3tier-pr-b-skills
 pr-target: B
 started: 2026-04-30T15:00:00+09:00
 ---
+
+> **status note**: skill 配置 (`~/.claude/skills/{weekly,monthly}-audit/SKILL.md`) と DbC 完了条件は満たしているが、AGENTS.md §AI auto-merge 許諾の post-merge 必須手順「完了 task を archive へ移動」は PR-B が main へ merge された後に行う。merge 前の archive は AGENTS.md 規定違反 (PR-A 時の Codex scope 違反事例と同一)。本 PR merge 後に `status: completed` へ更新し、`scripts/agentops archive task --task-id 02-skills-weekly-monthly-audit` を別 commit で実行する。
 
 # PR-B: weekly-audit / monthly-audit skill 新設
 
