@@ -32,6 +32,25 @@ class SendWebhookTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(headers, {})
 
+    def test_request_includes_custom_user_agent(self) -> None:
+        # urllib の default `Python-urllib/<ver>` は Cloudflare WAF (Discord 前段)
+        # に bot として block され HTTP 403 + error code 1010 を返す。本 CLI は
+        # 識別可能な独自 UA を送ることで Cloudflare bot fingerprint heuristics を
+        # avoid する。回帰防止テスト。
+        opener = mock.MagicMock(return_value=_make_response(204))
+        send_webhook(
+            "https://discord.invalid/webhooks/0/dummy",
+            {"x": 1},
+            opener=opener,
+        )
+        # opener (urlopen) に渡された Request 引数を取り出して header を検証
+        called_args, _ = opener.call_args
+        req = called_args[0]
+        ua = req.get_header("User-agent") or req.get_header("User-Agent")
+        self.assertIsNotNone(ua, "User-Agent header must be set explicitly")
+        self.assertNotIn("Python-urllib", ua)
+        self.assertIn("agentops-watch", ua)
+
     def test_204_returns_status(self) -> None:
         opener = mock.MagicMock(return_value=_make_response(204))
         status, _ = send_webhook(
