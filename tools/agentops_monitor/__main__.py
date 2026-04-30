@@ -847,16 +847,21 @@ def send_webhook(
     secret URL は引数経由でしか扱わず、log / stdout に出さない。
     """
     data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-    # User-Agent を明示しないと urllib の default `Python-urllib/<ver>` が
-    # Cloudflare WAF (Discord の前段) に bot として block され HTTP 403 + error
-    # code 1010 を返す。識別可能な独自 UA を送り Cloudflare の bot fingerprint
-    # heuristics を avoid する。
+    # urllib の default header は Content-Type + User-Agent (Python-urllib) のみで、
+    # Cloudflare WAF (Discord 前段) の bot heuristics で断続的に block される
+    # (HTTP 403 + error code 1010)。実環境で連続送信時に特に再現しやすい。
+    # 通常の HTTP client が送る基本 header (User-Agent / Accept / Accept-Language /
+    # Connection) を明示し、bot fingerprint との一致を緩和する。secret URL は
+    # 引数経由でしか扱わず、log / stdout に出さない。
     req = request.Request(
         url,
         data=data,
         headers={
             "Content-Type": "application/json",
             "User-Agent": "agentops-watch (+https://github.com/pachinko-spec/agentops)",
+            "Accept": "application/json",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Connection": "close",
         },
         method="POST",
     )
