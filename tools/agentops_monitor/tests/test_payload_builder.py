@@ -83,38 +83,33 @@ class BuildDigestEmbedTests(unittest.TestCase):
         payload = build_digest_embed("monthly", self._report(), _NOW)
         self.assertEqual(payload["embeds"][0]["title"], "🗓️ monthly digest — 2026-04")
 
-    def test_field_includes_required_keys(self) -> None:
-        # signal を含む project (dirty/tasks/handoffs/next-session/stuck) が field に
-        # 出力されること。clean な project は summary に集約される。fixture project は
-        # signal 多数のため field 1 つは確実に出る。
+    def test_description_includes_required_keys(self) -> None:
+        # signal を含む project は embed.description に markdown ## ヘッダー + bullet
+        # 形式で出力される (field 構造ではなく description ベース、見出し感を出す)。
         payload = build_digest_embed("daily", self._report(), _NOW)
-        # project field は signal 持ちの 1 件 + summary なし (全 project signal あり)
-        signal_field = next(
-            (f for f in payload["embeds"][0]["fields"] if "project:" in f["name"]),
-            None,
-        )
-        self.assertIsNotNone(signal_field, "signal を持つ project field が出るはず")
-        field_value = signal_field["value"]
-        self.assertIn("branch:", field_value)
-        self.assertIn("open tasks:", field_value)
-        self.assertIn("handoffs:", field_value)
-        # next-session: yes は次のように bullet 化される (yes 時のみ表示)
-        self.assertIn("next-session: yes", field_value)
-        self.assertIn("dirty:", field_value)
-        self.assertIn("stuck runs:", field_value)
+        description = payload["embeds"][0]["description"]
+        self.assertIn("## ", description)  # h2 ヘッダー
+        self.assertIn("branch:", description)
+        self.assertIn("open tasks:", description)
+        self.assertIn("handoffs:", description)
+        self.assertIn("dirty:", description)
+        self.assertIn("stuck runs:", description)
+        # next-session.md の存在は signal にも description にも含めない設計
+        self.assertNotIn("next-session", description)
 
     def test_sanitization_applied_to_branch(self) -> None:
         report = self._report()
         report["projects"][0]["git"]["branch"] = "feat/@everyone"
         payload = build_digest_embed("daily", report, _NOW)
-        field_value = payload["embeds"][0]["fields"][0]["value"]
-        self.assertNotIn("@everyone", field_value)
+        # branch sanitize は description (project section) に反映される
+        self.assertNotIn("@everyone", payload["embeds"][0]["description"])
 
-    def test_field_count_capped_at_25(self) -> None:
+    def test_description_truncated_to_4096(self) -> None:
+        # Discord embed.description は 4096 文字上限。30 project でも超過しないこと。
         report = self._report()
         report["projects"] = [report["projects"][0]] * 30
         payload = build_digest_embed("daily", report, _NOW)
-        self.assertLessEqual(len(payload["embeds"][0]["fields"]), 25)
+        self.assertLessEqual(len(payload["embeds"][0]["description"]), 4096)
 
     def test_invalid_kind_raises(self) -> None:
         with self.assertRaises(ValueError):
@@ -123,13 +118,18 @@ class BuildDigestEmbedTests(unittest.TestCase):
     # --- --message 拡張のテスト (PR-C で追加) ---
 
     def test_message_added_to_embed_fields(self) -> None:
-        """--message が "📜 audit log" field として末尾に追加される。"""
+        """--message は description とは独立した "📜 audit log" field として保持される。
+
+        project section は description (markdown ##) に集約、audit log のみ field に
+        分離することで、tail 50 が見出し階層を崩さない設計。
+        """
         payload = build_digest_embed("daily", self._report(), _NOW, message="[smoke] OK")
-        fields = payload["embeds"][0]["fields"]
+        embed = payload["embeds"][0]
+        fields = embed["fields"]
         self.assertEqual(fields[-1]["name"], "📜 audit log")
         self.assertEqual(fields[-1]["value"], "[smoke] OK")
-        # project field も維持されている (head emoji + "project:" を含む name)
-        self.assertTrue(any("project:" in f["name"] for f in fields))
+        # project section は description 側に維持される
+        self.assertIn("## ", embed["description"])
 
     def test_message_sanitized_in_digest(self) -> None:
         """--message に含まれる @everyone / <@id> 等が無害化される。"""
@@ -153,11 +153,11 @@ class BuildDigestEmbedTests(unittest.TestCase):
     def test_no_message_preserves_existing_shape(self) -> None:
         """message 無しは "📜 audit log" field を含めない (regression test)。"""
         payload = build_digest_embed("daily", self._report(), _NOW)
-        fields = payload["embeds"][0]["fields"]
-        names = [f["name"] for f in fields]
+        embed = payload["embeds"][0]
+        names = [f["name"] for f in embed["fields"]]
         self.assertNotIn("📜 audit log", names)
-        # signal を持つ project field は残る (head emoji + project: prefix)
-        self.assertTrue(any("project:" in n for n in names))
+        # signal を持つ project は description に出る
+        self.assertIn("## ", embed["description"])
 
     def test_empty_message_treated_as_no_message(self) -> None:
         """空文字 message も "📜 audit log" field を作らない。"""

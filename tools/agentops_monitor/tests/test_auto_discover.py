@@ -264,8 +264,7 @@ class TestNotifyCmdWithAutoDiscover(_HomePatchTestCase):
     def test_dry_run_with_auto_discover_shows_4_root_projects(self) -> None:
         # 4 root に .agentops/ を作り、各 project に signal を持たせる
         # (open tasks 1 件) ことで signal フィルタを通過させ、4 project すべて
-        # field に出ることを確認する。signal が無い project は summary に集約される
-        # 動作は別 test で検証する。
+        # description (markdown ## ヘッダー) に出ることを確認する。
         for sub in (".claude", ".codex", "agentops", "dev/foo"):
             base = self.home / sub
             self._make_agentops(base)
@@ -278,21 +277,16 @@ class TestNotifyCmdWithAutoDiscover(_HomePatchTestCase):
         self.assertEqual(rc, 0)
         payload = json.loads(out)
         self.assertEqual(len(payload["embeds"]), 1)
-        # signal を持つ project field 4 件 (head emoji + project: prefix)。summary は
-        # signal なし project が 0 のため出ない。
-        project_field_names = [
-            f["name"] for f in payload["embeds"][0]["fields"] if "project:" in f["name"]
-        ]
-        self.assertEqual(len(project_field_names), 4)
+        description = payload["embeds"][0]["description"]
+        # 4 project すべて ## ヘッダーで出る
+        self.assertEqual(description.count("\n## "), 3)  # 先頭 ## + 改行つき ##×3
+        self.assertTrue(description.startswith("## "))
         for expected in (".claude", ".codex", "agentops", "foo"):
-            self.assertTrue(
-                any(expected in name for name in project_field_names),
-                f"{expected} should appear in field names: {project_field_names}",
-            )
+            self.assertIn(expected, description)
 
     def test_auto_discover_collects_agentops_state_in_non_git_dirs(self) -> None:
         # 非 git の ~/.claude/.agentops/tasks/01.md があれば open tasks: 1 が
-        # field 値に出る (Codex P1 指摘の回帰テスト)。
+        # description 内に出る (Codex P1 指摘の回帰テスト)。
         claude_root = self.home / ".claude"
         self._make_agentops(claude_root)
         (claude_root / ".agentops" / "tasks").mkdir(exist_ok=True)
@@ -309,33 +303,27 @@ class TestNotifyCmdWithAutoDiscover(_HomePatchTestCase):
         )
         self.assertEqual(rc, 0)
         payload = json.loads(out)
-        fields = payload["embeds"][0]["fields"]
-        claude_field = next(
-            (f for f in fields if ".claude" in f["name"]), None
-        )
-        self.assertIsNotNone(claude_field, f"claude field missing: {fields}")
-        # field value 内に open tasks / handoffs の数字が含まれる (絵文字 prefix 付き)。
-        value = claude_field["value"]
-        self.assertIn("open tasks: 1", value)
-        self.assertIn("handoffs: 1", value)
-        # 絵文字 prefix も付与されている
-        self.assertIn("📋", value)
+        description = payload["embeds"][0]["description"]
+        # description 内に .claude project section が出る
+        self.assertIn(".claude", description)
+        # 集計値 + 絵文字 prefix も含まれる
+        self.assertIn("open tasks: **1**", description)
+        self.assertIn("handoffs: **1**", description)
+        self.assertIn("📋", description)
 
     def test_dry_run_with_auto_discover_zero_match_emits_empty_embed(self) -> None:
-        # 0 件マッチでも payload は生成される。fields は summary 1 件
-        # ("no projects discovered")、title は kind 別 emoji 付き daily digest。
+        # 0 件マッチでも payload は生成される。description に "no projects discovered"
+        # 行のみが出て、fields は空。title は kind 別 emoji 付き daily digest。
         rc, out, _ = self._run(
             ["notify", "--kind", "daily", "--auto-discover", "--dry-run"]
         )
         self.assertEqual(rc, 0)
         payload = json.loads(out)
         self.assertEqual(len(payload["embeds"]), 1)
-        fields = payload["embeds"][0]["fields"]
-        self.assertEqual(len(fields), 1)
-        self.assertEqual(fields[0]["name"], "✅ summary")
-        self.assertIn("no projects discovered", fields[0]["value"])
-        # title は kind 別 emoji + daily digest として出る
-        self.assertIn("daily digest", payload["embeds"][0]["title"])
+        embed = payload["embeds"][0]
+        self.assertEqual(embed["fields"], [])
+        self.assertIn("no projects discovered", embed["description"])
+        self.assertIn("daily digest", embed["title"])
 
     def test_dry_run_with_projects_and_auto_discover_exits_2(self) -> None:
         # 排他指定は exit 2 + 排他エラーメッセージ。
