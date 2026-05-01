@@ -154,6 +154,13 @@ roles:
         provider: openai
         model_family: coding-optimized model
         model_id: null
+        notes: >-
+          2026-05-01 採用例 (advisory): ユーザーグローバル側
+          (`~/.claude/agentops/model-catalog.yml`) で coding_frontier の Codex 候補を
+          primary として復元。Phase A (GPT-5.5 採用) と Phase B (Sonnet 4.6 baseline 化)
+          並走の trim 事故 (2026-04-28 archive plan) を是正し、cross-review の
+          Anthropic ↔ OpenAI 別系列原則を catalog 上で機械可読に維持。
+          実 model id は使用直前に公式 docs で確認する。
       - target_cli: claude
         provider: anthropic
         model_family: balanced coding model
@@ -167,6 +174,12 @@ roles:
         provider: openai
         model_family: fast coding model
         model_id: null
+        notes: >-
+          2026-05-01 採用例 (advisory): ユーザーグローバル側で coding_fast に Codex 候補
+          (coding-optimized model、`models_cache.json` 2026-05-01 取得で確認) を
+          primary として新設、Sonnet 4.6 を secondary に。
+          軽微コーディング / test ケース生成 / test 実行 を Codex CLI 経由で起動するケース。
+          実 model id は使用直前に公式 docs で確認する。
       - target_cli: claude
         provider: anthropic
         model_family: fast balanced model
@@ -205,6 +218,12 @@ roles:
         provider: openai
         model_family: fast writing/coding model
         model_id: null
+        notes: >-
+          2026-05-01 採用例 (advisory): ユーザーグローバル側で docs_agent に Codex 候補
+          (coding-optimized model) を secondary として追加。primary は Sonnet 4.6
+          (日本語品質)、secondary は code 例を含む技術設計 docs (例: docs/04-model-routing.md、
+          docs/10-cli-wrapper.md) のオフロード用。
+          実 model id は使用直前に公式 docs で確認する。
       - target_cli: claude
         provider: anthropic
         model_family: fast writing/coding model

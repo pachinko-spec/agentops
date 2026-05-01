@@ -8,7 +8,7 @@ applies-to: global
 
 ## 論理ロール
 
-モデルカタログ（[`config/model-catalog.yml`](file:///home/otaku/agentops/config/model-catalog.yml)）の論理ロールで指定し、実 model id は使用直前に公式 docs と CLI の現在仕様で確認する。
+モデルカタログの論理ロールで指定する。実 model id は反映先 catalog [`~/.claude/agentops/model-catalog.yml`](file:///home/otaku/.claude/agentops/model-catalog.yml) で確認する (機械可読 spec、固定値 OK)。source 雛形 [`config/model-catalog.yml`](file:///home/otaku/agentops/config/model-catalog.yml) は全ロールの `model_id: null` を維持 (Trinity template-source 層、`docs/04-model-routing.md:70` 既存方針)。
 
 | ロール | 用途 |
 |---|---|
@@ -41,22 +41,27 @@ applies-to: global
 
 実行手順は skill `cross-model-delegate` / `cross-review` を参照。
 
-## 実装 → レビュー → 分岐フロー
+## 設計 → 設計レビュー → 実装 → 実装レビュー → 最終判断 (5 工程フロー)
 
 main session が Claude Code の場合の標準フロー:
 
 | 工程 | 担当 | 用途 |
 |---|---|---|
-| 設計 / 計画 / 調査 | Claude (orchestrator_frontier) | user 意図汲み、harness spec、stop conditions |
-| 実装 (run A) | Codex (coding_frontier) | コード + test 生成 + test 実行 |
-| cross-review (run B) | Codex (review_frontier、別 session) | 独立性確保、kind ラベル付与 |
-| 成果物チェック / 最終判断 | Claude | diff + test result + cross-review 結果 (3 点セット) で判定 |
+| 1 設計 / 計画 / 調査 | Claude (orchestrator_frontier) | user 意図汲み、harness spec、stop conditions、観察事実裏取り |
+| 2 設計レビュー (新設、高リスク plan で必須) | Codex (review_frontier、別 session) | 観察事実食い違い / Trinity 違反 / 別系列原則 / scope / 検証手段不足の検出 |
+| 3 実装 (run A) | Codex (coding_frontier) | コード + test 生成 + test 実行 |
+| 4 実装レビュー (run B) | Codex (review_frontier、別 session) | PR 差分の独立性、kind ラベル付与 |
+| 5 最終判断 | Claude (orchestrator) | diff + test result + cross-review 結果で採否判定 |
 
-cross-review reviewer は修正指摘ごとに `kind: mechanical | design` ラベルを付与する:
+**発動条件**: 高リスク plan (durable instructions / catalog / AGENTS.md / global rules / migration / security / public API / 課金 / deploy 影響) では工程 2 (設計レビュー) を必須とする。軽微 plan (typo / docs 単純追記) では工程 2 任意。
 
-- `kind: mechanical` (patch / 行番号 / 具体書き換え提示) → Claude が直接 patch 適用、ループ +1
-- `kind: design` (抽象指摘、判断要) → Codex (run A) に再委譲、ループ +1
+**kind 分岐は工程ごとに分離**:
 
-ループカウントは修正者問わず +1。3 周目到達 → kind 不問で user 確認。kind ラベル無し → 保守的に `design` 扱い。
+- 工程 2 (設計レビュー) `kind: mechanical` (patch / 行番号 / 具体書き換え提示) → orchestrator が parent plan ファイル直接 patch、ループ +1
+- 工程 2 (設計レビュー) `kind: design` (抽象指摘、判断要) → orchestrator は **user 確認を再取得** (run A 未起動のため再委譲先がない、orchestrator 独走防止)、ループ +1
+- 工程 4 (実装レビュー) `kind: mechanical` → orchestrator が PR 差分直接 patch、ループ +1
+- 工程 4 (実装レビュー) `kind: design` → orchestrator が **Codex coding_frontier (run A、別 session)** に再委譲、ループ +1
+
+ループカウントは修正者問わず +1。3 周目到達 → kind 不問で user 確認 (本許諾発動せず)。kind ラベル無し → 保守的に `design` 扱い。
 
 reviewer 出力期待値 (kind ラベル / unified diff / `artifacts/review.md` 保存) は `scripts/agentops delegate --to <reviewer> --role review_frontier` 実行時に wrapper が自動付与する。詳細は `docs/10-cli-wrapper.md` の `## Reviewer 出力期待値 (review_frontier)` 節を参照。
