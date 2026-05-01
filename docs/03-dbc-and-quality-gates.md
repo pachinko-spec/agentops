@@ -88,3 +88,24 @@ DbC はすべてのタスクに使う軽量な契約である。再現性、arti
 - mainへ直接pushしていない
 - ユーザーまたはルール上許可されたAIがマージしてよい状態
 - GitHub上のPRでマージし、ローカル main と origin/main が同期している
+- post-merge 整理を別 chore PR に分離していない (詳細は次節 §post-merge 手順)
+
+## post-merge 手順 (1 PR scope 完結原則)
+
+merge 対象 PR が要求する以下の整理作業は、**merge 前 commit に含める** ことを原則とする (1 PR scope 完結原則):
+
+- 完了 task の `.agentops/archive/<plan-id>/tasks/` 移動
+- `plans/current.md` の進捗反映 / 完了マーカー更新
+- `task-plans/current.md` の archive (plan 完了時) または更新
+- `prompts/next-session.md` の次セッション entry 反映
+
+merge 完了直後の必須手順 (post-merge):
+
+1. `git checkout main && git fetch origin && git pull --ff-only origin main` で同期確認
+2. `agentops repo` では `scripts/agentops archive task --task-id <basename>` を **merge 前 commit** で実行済みであることを `ls .agentops/archive/<plan-id>/tasks/` で read-only 確認 (本コマンドは entry_point と completed_tasks を一括更新)
+3. `git status --short` で merge 後 dirty diff が無いこと確認
+4. plan 全体完了時のみ、merge 前 commit で `scripts/agentops archive plan --plan-id <id> --summary <text>` 実行済みであることを `archive/README.md` で確認
+
+**例外**: 上記整理を別 chore PR に分離する運用は **user 明示許可がある場合のみ** 許容する。理由は run log / handoff / 元 PR 本文に残す。詳細な「user 明示許可」3 要件は `~/.claude/rules/auto-merge-permission.md` § auto-merge 後の必須手順を参照。
+
+詳細は rules: `auto-merge-permission.md` § auto-merge 後の必須手順、`session-record-and-handoff.md` § prompts/next-session.md の同セッション内更新原則。関連 workflow は `docs/02-workflow.md` を参照。

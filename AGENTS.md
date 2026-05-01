@@ -75,7 +75,18 @@ Claude Code 固有の補足は同階層の `CLAUDE.md` にあります。`CLAUDE
 
 このリポジトリでは、以下の **AI auto-merge 許諾条件をすべて満たした PR に限り**、主 orchestrator（Claude Code / Codex いずれの場合も）が `gh pr merge --squash --delete-branch` でマージしてよいものとします。docs/03 のマージ条件節「ユーザーまたはルール上許可された AI がマージしてよい状態」の「ルール上許可された AI」をここで定義します。
 
-**設計段階 cross-review (高リスク plan で必須)**: durable instructions / catalog / AGENTS.md / global rules / migration / security / public API / 課金 / deploy 影響を持つ plan は、実装着手前に主 orchestrator と別系列の frontier reviewer (主 Claude → Codex、主 Codex → Claude) に設計レビューを委譲し、P0/P1=0 を確認する。実施手順は `rules/model-routing.md` の 5 工程フロー節、kind 分岐は工程 2 (設計レビュー) と工程 4 (実装レビュー) で異なる (前者は user 確認再取得、後者は Codex run A 再委譲)。
+**設計段階 cross-review (高リスク plan で必須)**: durable instructions / catalog / AGENTS.md / global rules / migration / security / public API / 課金 / deploy 影響を持つ plan は、**user 承認後 / 実装着手前**に主 orchestrator と別系列の frontier reviewer (主 Claude → Codex、主 Codex → Claude) に設計レビューを委譲し、P0/P1=0 を確認する。
+
+**通常運用** (大半の高リスク plan):
+
+1. orchestrator が plan 作成 (plan mode 中、Plan agent 内部レビューで磨く)
+2. ExitPlanMode で user 提示 → user 承認
+3. auto-mode で Codex cross-review 実施 (`scripts/agentops delegate --to codex --role review_frontier --effort high --input <plan>`)
+4. P0/P1=0 を確認、cross-review 通過後 auto-mode で実装進行 (`kind: design` 大幅乖離時のみ user 再確認、軽微変更は orchestrator 判断)
+
+**特殊運用** (cross-review 前提の特殊高リスク plan): user 提示前に Codex cross-review 必須。判定基準は `rules/model-routing.md` の「## 工程 2 のタイミング」節 (a)〜(c) を参照 ((a) 実グローバル反映を同一作業で行い user が承認前に別系列レビュー結果を必要とする / (b) hook 仕様改変 / (c) credential / payment / migration / public API 改変)。plan mode 制約 (Bash 禁止、user 口頭承認では解除不可) のため user が手動で plan mode を抜ける必要 (Claude Code 公式の現在の plan mode toggle 操作)。
+
+実施手順は `rules/model-routing.md` (雛形) / `~/.claude/rules/model-routing.md` (反映) の 5 工程フロー節と「Plan agent と cross-review の区別」「工程 2 のタイミング」「plan mode 制約」節を参照。kind 分岐は工程 2 (設計レビュー) と工程 4 (実装レビュー) で異なる (前者は orchestrator 判断 + 大幅乖離時 user 確認再取得、後者は Codex run A 再委譲)。
 
 ### 許諾条件（全て AND）
 
@@ -99,12 +110,14 @@ Claude Code 固有の補足は同階層の `CLAUDE.md` にあります。`CLAUDE
 - task の `停止条件` 節に該当する事象が発生。
 - Codex 所見に P0 / P1 が残っている、または採否判断が分かれた。
 
-### auto-merge 後の必須手順
+### auto-merge 後の必須手順 (1 PR scope 完結原則)
+
+post-merge 整理 (archive 移動 / `plans/current.md` 更新 / `task-plans/current.md` archive / `prompts/next-session.md` 更新) は **merge 前 commit に含める** ことを原則とする。merge 後に別 chore PR で実施するのは **user 明示許可がある場合のみ** 許容 (詳細な「user 明示許可」3 要件は `~/.claude/rules/auto-merge-permission.md` § auto-merge 後の必須手順を参照)。
 
 1. `git checkout main && git fetch origin && git pull --ff-only origin main` で main 同期確認。
-2. `scripts/agentops archive task --task-id <basename> --dry-run` で内容を確認した上で、`--dry-run` 無しで本番実行する。これにより完了 task ファイルが `.agentops/archive/<plan-id>/tasks/` へ移動し、`.agentops/prompts/next-session.md` の `entry_point` と `completed_tasks` が一括更新される。`<basename>` は task md ファイル名から `.md` を除いたもの（例: `07-p1-06-archive-auto-update`）。
-3. `tasks/` が残ゼロなら `prompts/next-session.md` を削除するか保持するかを user に確認する（本コマンドは entry_point を完了マーカー文字列 `(none — all tasks archived; consider removing this file)` に書き換えるが、ファイル自体は削除しない）。
-4. plan 全体完了時のみ `scripts/agentops archive plan --plan-id <id> --summary <text> [--date <YYYY-MM-DD>]` を実行し、残った plans/task-plans/tasks/reviews を archive へ一括移動 + `archive/README.md` の table に新規 row を挿入する。
+2. `scripts/agentops archive task --task-id <basename> --dry-run` での確認と本番実行 (`--dry-run` 無し) は **merge 前 commit に含める**。本コマンドは完了 task ファイルを `.agentops/archive/<plan-id>/tasks/` へ移動し、`.agentops/prompts/next-session.md` の `entry_point` と `completed_tasks` を一括更新する。`<basename>` は task md ファイル名から `.md` を除いたもの (例: `07-p1-06-archive-auto-update`)。merge 後は `ls .agentops/archive/<plan-id>/tasks/` と `cat .agentops/prompts/next-session.md` で結果を read-only 確認する。
+3. `git status --short` で merge 後 dirty diff が無いことを確認する (本コマンドが entry_point を完了マーカー文字列 `(none — all tasks archived; consider removing this file)` に書き換えるが、ファイル自体は削除しない仕様も merge 前 commit で吸収済)。
+4. plan 全体完了時のみ `scripts/agentops archive plan --plan-id <id> --summary <text> [--date <YYYY-MM-DD>]` も **merge 前 commit に含める**。本コマンドは残った plans/task-plans/tasks/reviews を archive へ一括移動し、`archive/README.md` の table に新規 row を挿入する。merge 後は `archive/README.md` と `.agentops/archive/<plan-id>/` の存在確認のみ行う。
 5. 上記が完了するまで次 task に着手しない。
 
 ### 適用範囲

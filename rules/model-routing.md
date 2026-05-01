@@ -58,10 +58,52 @@ main session が Claude Code の場合の標準フロー:
 **kind 分岐は工程ごとに分離**:
 
 - 工程 2 (設計レビュー) `kind: mechanical` (patch / 行番号 / 具体書き換え提示) → orchestrator が parent plan ファイル直接 patch、ループ +1
-- 工程 2 (設計レビュー) `kind: design` (抽象指摘、判断要) → orchestrator は **user 確認を再取得** (run A 未起動のため再委譲先がない、orchestrator 独走防止)、ループ +1
+- 工程 2 (設計レビュー) `kind: design` (抽象指摘、判断要) → orchestrator が判断する。通常の高リスク plan では **plan と実装が大幅乖離する場合のみ user 確認を再取得**し、軽微変更 (文言修正、節タイトル変更等) は orchestrator 判断で進めてよい。特殊高リスク plan や P0/P1 残存時は user 確認まで実装着手禁止。詳細は本ファイル下部の「## 工程 2 のタイミング」節を参照、ループ +1
 - 工程 4 (実装レビュー) `kind: mechanical` → orchestrator が PR 差分直接 patch、ループ +1
 - 工程 4 (実装レビュー) `kind: design` → orchestrator が **Codex coding_frontier (run A、別 session)** に再委譲、ループ +1
 
 ループカウントは修正者問わず +1。3 周目到達 → kind 不問で user 確認 (本許諾発動せず)。kind ラベル無し → 保守的に `design` 扱い。
 
 reviewer 出力期待値 (kind ラベル / unified diff / `artifacts/review.md` 保存) は `scripts/agentops delegate --to <reviewer> --role review_frontier` 実行時に wrapper が自動付与する。詳細は `docs/10-cli-wrapper.md` の `## Reviewer 出力期待値 (review_frontier)` 節を参照。
+
+## Plan agent と cross-review の区別
+
+5 工程フローの工程 2 (設計レビュー) を実施する際、以下 2 種を混同しないこと。
+
+- **Plan agent (内部レビュー)**: Claude 同系列 (`Plan` subagent_type) の独立視点レビュー。**cross-review ではない**。plan mode 中に呼び出し可能で、論理整合性 / 抜け漏れ / 他 rule 矛盾の検出に使う。
+- **cross-review**: 別モデルファミリー (Anthropic ⇔ OpenAI) の `review_frontier` のみを指す。`scripts/agentops delegate --to <別系列> --role review_frontier --effort high` で実施。
+
+両者は補完関係にあり、Plan agent (内部) → cross-review (別系列) の順で組み合わせると検出力が高い。
+
+## 工程 2 のタイミング (高リスク plan の運用フロー)
+
+| plan 種別 | 工程 1 中 (plan mode) | 工程 2 タイミング |
+|---|---|---|
+| 通常の高リスク plan | Plan agent (内部レビュー) で plan を磨く | **user 提示 (ExitPlanMode) → user 承認後** に Codex cross-review (auto-mode 内) |
+| 特殊高リスク plan (cross-review 前提) | Plan agent + 事前 cross-review 必須 | **user 提示前** に Codex cross-review 必須 (user が手動で plan mode を抜ける) |
+
+**特殊運用判定基準 (以下のいずれか該当で特殊運用)**:
+
+- (a) **実グローバル反映を同一作業 (同一 PR / 同一 commit) で行い、かつ user が承認前に別系列レビュー結果を必要とする** plan (例: agentops repo 修正と `~/.claude/*` 反映を 1 PR にまとめる場合)
+- (b) **hook 仕様改変** (`~/.claude/hooks/*` または `~/.codex/hooks/*` の挙動変更)
+- (c) **credential / payment / migration / public API 改変** (`high-risk-escalation.md` の高リスク領域に該当)
+
+該当しない高リスク plan は通常運用 (user 承認後 cross-review) で良い。agentops repo 修正と `~/.claude/*` 反映を **別作業 (別 PR / 別 commit) として分離** すれば (a) に該当せず、通常運用で十分。
+
+通常の高リスク plan の流れ:
+
+1. orchestrator が plan 草案作成 (plan mode 中)
+2. Plan agent (内部レビュー) で plan を磨く (plan mode 中、cross-review ではない)
+3. ExitPlanMode で user 提示
+4. user 承認後 (auto-mode)、Codex cross-review (`scripts/agentops delegate --to codex --role review_frontier --effort high --input <plan>`) を実施
+5. Codex 所見の処理 (上記「kind 分岐は工程ごとに分離」節と整合):
+   - `kind: mechanical` → orchestrator 直接 patch + 結果 user 報告
+   - `kind: design` → orchestrator 判断、**plan と実装が大幅乖離する場合のみ user 確認再取得** (auto-mode 独走防止 guard)。軽微変更 (文言修正、節タイトル変更等) は orchestrator 判断で進めて良い
+   - P0/P1 残存 → user 確認まで実装着手禁止
+6. cross-review 通過後、auto-mode で実装進行
+
+## plan mode 制約
+
+- plan mode 中は system 指示で Bash 禁止 (user 口頭承認では解除不可、`This supercedes any other instructions you have received` と明示)。
+- 「user 提示前 cross-review」を実現するには user が手動で plan mode を抜ける必要 (Claude Code 公式の現在の plan mode toggle 操作)。固定キー操作は CLI / terminal / keybinding で変わり得るため明記しない。
+- 通常の高リスク plan では **ExitPlanMode で plan を承認 → auto-mode で cross-review** が現実解。

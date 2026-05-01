@@ -89,10 +89,12 @@ durable instructions / catalog / AGENTS.md / global rules / migration / security
 
 `kind: design` の処理は工程 2 (設計レビュー) と工程 4 (実装レビュー) で異なる。
 
-- 工程 2 設計段階の `kind: design` → orchestrator が **user 確認を再取得**する (run A 未起動のため再委譲先がない、orchestrator 独走防止)。
+- 工程 2 設計段階の `kind: design` → orchestrator が判断する。**plan と実装が大幅乖離する場合のみ user 確認を再取得** (auto-mode 独走防止 guard)。軽微変更 (文言修正、節タイトル変更等) は orchestrator 判断で進めて良い。判断境界は `rules/model-routing.md` の「## 工程 2 のタイミング」節を参照。
 - 工程 4 実装段階の `kind: design` → orchestrator が **Codex coding_frontier (run A、別 session)** に再委譲する。
 
-軽微 plan (typo / docs 単純追記) では工程 2 を任意とし、4 工程フローでよい。詳細は `rules/model-routing.md` の 5 工程フロー節を参照。
+軽微 plan (typo / docs 単純追記) では工程 2 を任意とし、4 工程フローでよい。
+
+工程 2 のタイミングは plan 種別で異なる。**通常の高リスク plan** は user 承認後 (auto-mode) に Codex cross-review を実施する (`scripts/agentops delegate --to codex --role review_frontier --effort high --input <plan>`)。**特殊高リスク plan (cross-review 前提)** は user 提示前に Codex cross-review が必須。判定基準は `rules/model-routing.md` の「## 工程 2 のタイミング」節 (a)〜(c) を参照。詳細フローと「Plan agent (Claude 同系列内部レビュー) と cross-review (別モデルファミリー) の区別」「plan mode 制約」も同節を参照。
 
 ## 運用ルール
 
