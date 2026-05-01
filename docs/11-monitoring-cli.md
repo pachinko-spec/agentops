@@ -13,7 +13,7 @@ applies-to: shared-cli-spec
 `agentops-watch` は、ローカルまたは監視ホストから複数プロジェクトの状態を確認するための小さな CLI である。
 cron / systemd timer / 手動実行から呼び出す。
 
-`agentops archive` は、完了 plan / task を `.agentops/archive/<plan-id>/` に移し、`.agentops/prompts/next-session.md` を機械的に更新する CLI である。CLAUDE.md / AGENTS.md durable instructions の「auto-merge 後の必須手順」が要求する後処理を、人手忘れに頼らず一発で実行するためのもの。
+`agentops archive` は、完了 plan / task を `.agentops/archive/<plan-id>/` に移し、`.agentops/prompts/next-session.md` を機械的に更新する CLI である。CLAUDE.md / AGENTS.md durable instructions の「post-merge 手順 (1 PR scope 完結原則)」に沿って、merge 前 commit に含める整理を人手忘れに頼らず実行するためのもの。
 
 ## shared-cli-spec パターンでの位置付け
 
@@ -168,11 +168,11 @@ sources:
 
 ## archive サブコマンド
 
-[DbCと品質ゲート](03-dbc-and-quality-gates.md) と CLAUDE.md / AGENTS.md durable instructions の「auto-merge 後の必須手順」を機械的に実行するための CLI。完了 task / plan の archive 移動と `prompts/next-session.md` 更新の人手忘れを防ぐ。
+[DbCと品質ゲート](03-dbc-and-quality-gates.md) と CLAUDE.md / AGENTS.md durable instructions の「post-merge 手順 (1 PR scope 完結原則)」を機械的に支援する CLI。完了 task / plan の archive 移動と `prompts/next-session.md` 更新を **merge 前 commit に含める** ことを支援し、人手忘れを防ぐ。
 
 ### `agentops archive task --task-id <basename>`
 
-PR マージ直後の **個別 task の後処理** を一発で行う。
+merge 前 commit に含める **個別 task の archive 整理** を一発で行う (1 PR scope 完結原則。merge 後の別 chore PR で実施するのは user 明示許可がある場合のみ許容、`~/.claude/rules/auto-merge-permission.md` § auto-merge 後の必須手順を参照)。
 
 - `.agentops/tasks/<basename>.md` を `.agentops/archive/<active-plan-id>/tasks/<basename>.md` へ移動する。git 管理下なら `git mv` を、そうでなければ `shutil.move` を使う。
 - `.agentops/prompts/next-session.md` の `entry_point` を、`tasks/` に残るファイルの最小番号に書き換える。残ゼロなら `(none — all tasks archived; consider removing this file)` のマーカー文字列に置換する（ファイル自体は削除しない）。
