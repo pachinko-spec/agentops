@@ -131,6 +131,18 @@ scripts/agentops delegate --to claude --role smoke --effort xhigh --message "Ret
 
 通常環境で成功し、stdout が期待値どおりであることを `.agentops/runs/{run_id}/` に残す。sandbox 内の失敗 run がある場合は、通常環境での再実行結果と区別して報告する。
 
+## Reviewer 出力期待値 (review_frontier)
+
+`--role review_frontier` で発行した delegate run の request.md には、wrapper が自動で「Reviewer 出力期待値」節を付与する。reviewer (Codex / Claude いずれの review run) は次を満たす形で `artifacts/review.md` を残す:
+
+- 各指摘ごとに `severity` (P0-P3) / `kind` (mechanical | design) / `file` / `summary` / `details` を含む
+- `kind: mechanical` の指摘には unified diff を併記 (Claude が `git apply` できる粒度)
+- `kind: design` の指摘は抽象指摘のみで可 (Claude が Codex coding_frontier に再委譲する)
+- `kind` ラベル無しの指摘は保守的に `design` 扱い
+- 出力保存先は run_dir 配下の `artifacts/review.md` 固定
+
+これにより主 orchestrator (Claude) は「mechanical → 直接 patch」「design → Codex 再委譲」の分岐を機械的に行えるようになる。詳細運用フローは `rules/model-routing.md` (PR-02 で追加予定) の「実装 → レビュー → 分岐フロー」節と、skill `review-loop-guard` (PR-03 で kind 分岐手順を追加予定) を参照する。
+
 ## DbC との関係
 
 `scripts/agentops` CLI wrapper は DbC のうち、別 CLI / 別モデルへの委譲とその実行記録の永続化層を機械的に支える。DbC 5 条件（前提・不変・完了・禁止・停止）の単一真ソースは [DbCと品質ゲート](03-dbc-and-quality-gates.md) であり、本章ではそれを **delegate / harness 文脈にどう適用するか** だけを記す。
