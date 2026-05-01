@@ -162,7 +162,7 @@ def read_input(args: argparse.Namespace, project: Path) -> str:
 
 
 def build_request(args: argparse.Namespace, body: str) -> str:
-    """外部エージェントへ渡す依頼文を、run log としても読める Markdown に整形する。"""
+    """外部エージェントへ渡す依頼文を、review_frontier では期待出力つきの Markdown に整形する。"""
     lines = [
         "# AgentOps Delegate Request",
         "",
@@ -177,6 +177,29 @@ def build_request(args: argparse.Namespace, body: str) -> str:
         body.strip() or "(no task body provided)",
         "",
     ]
+    if args.role == "review_frontier":
+        lines.extend(
+            [
+                "## Reviewer 出力期待値",
+                "",
+                "このレビュー run は agentops cross-review 用です。次の形式で `artifacts/review.md` を残してください (本ファイルに直接書き込んでも、stdout で同等内容を返してもよい):",
+                "",
+                "- 各指摘ごとに次のフィールドを含む",
+                "  - `severity`: P0 / P1 / P2 / P3 (review-policy.md 準拠)",
+                "  - `kind`: `mechanical` または `design`",
+                "    - `mechanical` = patch / 行番号 / 具体書き換えで修正可能 (Claude が直接 git apply できる)",
+                "    - `design` = 抽象指摘・判断要 (Claude が Codex coding_frontier に再委譲する)",
+                "  - `file`: 対象ファイル相対パス",
+                "  - `summary`: 1-2 行",
+                "  - `details`: 必要に応じた本文",
+                "- `kind: mechanical` の指摘には末尾に unified diff (`diff --git ...` 形式) を必ず添える",
+                "- `kind: design` の指摘は patch 不要、抽象的な改善方針で OK",
+                "- ループ防止のため、修正済みコードへの再指摘や P3 のみの細かい嗜好は避ける",
+                "- 上記出力を `artifacts/review.md` に保存する (run_dir 配下、ファイル名固定)",
+                "- 出力末尾に `kind` ラベル無しの自由記述を加える場合は、保守的に `design` 扱いとなる旨を Claude 側で読み替える",
+                "",
+            ]
+        )
     return "\n".join(lines)
 
 
