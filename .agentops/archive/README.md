@@ -6,6 +6,7 @@
 
 | 完了日 | plan-id | サマリ |
 |---|---|---|
+| 2026-05-01 | [claude-codex-orchestrator-rules](2026-05-01-claude-codex-orchestrator-rules/plan.md) | Claude orchestrator + Codex 実装/cross-review 体制への運用ルール整備 (delegate prompt template / model-routing 雛形 / review-loop-guard kind 分岐 / AGENTS.md auto-merge 補記) |
 | 2026-05-01 | [fix-cron-bashrc-env-load](2026-05-01-fix-cron-bashrc-env-load/plan.md) | cron 経由 (non-interactive bash) で audit-daily/weekly/monthly が DISCORD_WEBHOOK_URL_* env を読めず失敗していた問題を修正。~/.bashrc の export 4 行を non-interactive 早期 return ガードより前へ移動 (bashrc は git 管理外、本 PR は plan/task 記録のみ)。 |
 | 2026-04-30 | [discord-cron-3tier-redesign](2026-04-30-discord-cron-3tier-redesign/plan.md) | Discord 通知 cron を 3-tier (daily=CLI軽量 / weekly=/weekly-audit / monthly=/monthly-audit + quarterly 吸収) に再編、agentops/scripts/ に集約、auto-discovery で 4 root scan に拡張。post-merge hotfix で Cloudflare bot block を回避し signal-only + emoji digest に改善。 |
 | 2026-04-30 | [applies-to-and-trinity](2026-04-30-applies-to-and-trinity/plan.md) | applies-to frontmatter 導入 (4 値) + 三役 (Trinity) 宣言 + Discord 通知 docs に shared-cli-spec パターン明示 |
