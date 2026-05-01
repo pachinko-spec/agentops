@@ -75,13 +75,15 @@ Claude Code 固有の補足は同階層の `CLAUDE.md` にあります。`CLAUDE
 
 このリポジトリでは、以下の **AI auto-merge 許諾条件をすべて満たした PR に限り**、主 orchestrator（Claude Code / Codex いずれの場合も）が `gh pr merge --squash --delete-branch` でマージしてよいものとします。docs/03 のマージ条件節「ユーザーまたはルール上許可された AI がマージしてよい状態」の「ルール上許可された AI」をここで定義します。
 
+**設計段階 cross-review (高リスク plan で必須)**: durable instructions / catalog / AGENTS.md / global rules / migration / security / public API / 課金 / deploy 影響を持つ plan は、実装着手前に主 orchestrator と別系列の frontier reviewer (主 Claude → Codex、主 Codex → Claude) に設計レビューを委譲し、P0/P1=0 を確認する。実施手順は `rules/model-routing.md` の 5 工程フロー節、kind 分岐は工程 2 (設計レビュー) と工程 4 (実装レビュー) で異なる (前者は user 確認再取得、後者は Codex run A 再委譲)。
+
 ### 許諾条件（全て AND）
 
 1. **DbC 完了**: 該当 PR がカバーする `.agentops/tasks/<NN>-*.md` の DbC 完了条件をすべて満たしている。
 2. **別系列 frontier cross-review 通過**: 主 orchestrator とは異なる系列の frontier reviewer で `scripts/agentops delegate --to <reviewer> --role review_frontier --effort high --input <該当ファイル>` を実施済み、所見に **P0 / P1 が 0 件、または反映済み**。run 記録が `.agentops/runs/<timestamp>-<task-id>/` に残っている。reviewer 選定は **主 orchestrator と別系列（Anthropic ↔ OpenAI）** とする。
    - 主 orchestrator が Claude Code (Anthropic 系) → reviewer は **Codex / OpenAI 系** (`--to codex`)
    - 主 orchestrator が Codex (OpenAI 系) → reviewer は **Claude / Anthropic 系** (`--to claude`)
-   - reviewer は修正指摘ごとに `kind: mechanical | design` ラベルを付与する。`kind: mechanical` (patch / 行番号 / 具体書き換え提示) は Claude が直接 patch、`kind: design` (抽象指摘) は Codex (run A) に再委譲。修正したらループ +1、修正者問わず。3 周目到達 → kind 不問で user 確認 (本許諾発動せず)。kind ラベル無し → 保守的に `design` 扱い。詳細は `rules/model-routing.md` (雛形) / `~/.claude/rules/model-routing.md` (反映) の「## 実装 → レビュー → 分岐フロー」節。
+   - reviewer は修正指摘ごとに `kind: mechanical | design` ラベルを付与する。`kind: mechanical` (patch / 行番号 / 具体書き換え提示) は Claude が直接 patch、`kind: design` (抽象指摘) は Codex (run A) に再委譲。修正したらループ +1、修正者問わず。3 周目到達 → kind 不問で user 確認 (本許諾発動せず)。kind ラベル無し → 保守的に `design` 扱い。詳細は `rules/model-routing.md` (雛形) / `~/.claude/rules/model-routing.md` (反映) の 5 工程フロー節。
 3. **CI green**: GitHub Actions の fail 系 job（actionlint / yamllint / markdown-link-check が導入済みなら全 job、未導入なら自己検証で `python3 -m compileall tools` 等が exit 0）。
 4. **観察事実食い違いなし**: 着手時に裏取りした観察事実と現状に食い違いが新たに発生していない。
 5. **PR スコープ単一**: 該当 task が要求する変更だけを含み、スコープ外リファクタを含まない。
