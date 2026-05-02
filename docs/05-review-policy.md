@@ -26,6 +26,8 @@ applies-to: global
 
 cross-review / cross-model review は、主 orchestrator とは別系列、別 CLI、別モデルファミリーの frontier reviewer で設計や差分を確認するレビューである。特定モデル固定ではなく、現在利用できる CLI、公式 docs で確認済みの model id、対象タスクのリスクに応じて選ぶ。
 
+5 工程フローの実装レビューでは、4-α 同系列独立実装レビューと 4-β cross-review を分ける。4-α は実装担当と同系列でも別 session の独立検証であり、cross-review ではない。4-β は実装担当と別モデルファミリーの `review_frontier` が行う本来の cross-review とする。
+
 次の変更では cross-review を検討する。
 
 - 高リスク設計、セキュリティ修正、データ損失リスクがある変更

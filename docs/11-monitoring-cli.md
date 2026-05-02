@@ -217,7 +217,7 @@ active plan-id は `.agentops/plans/current.md` の `> plan-id: \`<id>\`` 行か
 
 - `scripts/agentops-watch` は read-only な観測 CLI。`.agentops/` を変更しない。
 - `scripts/agentops archive` は明示的に呼ばれた時のみ `.agentops/` を変更する。pre-commit / pre-push hook では起動しない（ヒューマンエラーをマージ後に CLI 一発で解消する設計のため）。
-- 本 CLI は `--dry-run` を通じて差分確認できるので、自動化スクリプトから呼ぶ場合も `--dry-run` を先に走らせて確認する運用を推奨する。
+- 本 CLI は `--dry-run` を通じて差分確認できるので、自動化スクリプトから呼ぶ場合も `--dry-run` を先に走らせて差分を確認する運用を基本とする。
 
 ### DbC との関係（archive サブコマンド）
 

@@ -1,6 +1,6 @@
 # Codex Global Guidance Template
 
-このテンプレートは `~/.codex/AGENTS.md` を生成するときの素材です。反映前に Codex の公式 docs、`codex --help`、既存の `~/.codex` 設定を確認してください。
+このテンプレートは `~/.codex/AGENTS.md` を生成するときの素材です。反映前に Codex の公式 docs、`codex --help`、既存の `~/.codex` 設定を確認する。
 
 ## Working Agreements
 

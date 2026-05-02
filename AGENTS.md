@@ -2,7 +2,7 @@
 
 このファイルは `/home/otaku/agentops` リポジトリで作業するコーディングエージェント (Claude Code / Codex CLI) 向けのプロジェクト固有指示です。グローバル設定 (`~/.claude/CLAUDE.md` / `~/.codex/AGENTS.md`) より、このリポジトリ内の作業ではこのファイルを優先します。
 
-Claude Code 固有の補足は同階層の `CLAUDE.md` にあります。`CLAUDE.md` は `@AGENTS.md` で本ファイルを import し、Claude Code 固有のパス・確認コマンド・branch prefix のみを差分として追記しています。両ファイルの章立ては本ファイルを基準にしてください。
+Claude Code 固有の補足は同階層の `CLAUDE.md` にあります。`CLAUDE.md` は `@AGENTS.md` で本ファイルを import し、Claude Code 固有のパス・確認コマンド・branch prefix のみを差分として追記しています。両ファイルの章立ては本ファイルを基準にする。
 
 ## このリポジトリの位置づけ — 三役 (Trinity)
 
@@ -88,14 +88,16 @@ Claude Code 固有の補足は同階層の `CLAUDE.md` にあります。`CLAUDE
 
 **特殊運用** (cross-review 前提の特殊高リスク plan): user 提示前に Codex cross-review 必須。判定基準は `rules/model-routing.md` の「## 工程 2 のタイミング」節 (a)〜(c) を参照 ((a) 実グローバル反映を同一作業で行い user が承認前に別系列レビュー結果を必要とする / (b) hook 仕様改変 / (c) credential / payment / migration / public API 改変)。plan mode 制約 (Bash 禁止、user 口頭承認では解除不可) のため user が手動で plan mode を抜ける必要 (Claude Code 公式の現在の plan mode toggle 操作)。
 
-実施手順は `rules/model-routing.md` (雛形) / `~/.claude/rules/model-routing.md` (反映) の 5 工程フロー節と「Plan agent と cross-review の区別」「工程 2 のタイミング」「plan mode 制約」節を参照。kind 分岐は工程 2 (設計レビュー) と工程 4 (実装レビュー) で異なる (前者は orchestrator 判断 + 大幅乖離時 user 確認再取得、後者は Codex run A 再委譲)。
+実施手順は `rules/model-routing.md` (雛形) / `~/.claude/rules/model-routing.md` (反映) の 5 工程フロー節と「Plan agent と cross-review の区別」「工程 2 のタイミング」「plan mode 制約」節を参照。kind 分岐は工程 2 (設計レビュー) と工程 4 (実装レビュー) で異なる (前者は orchestrator 判断 + 大幅乖離時 user 確認再取得、後者は Codex run A 再委譲)。工程 4 は 4-α 同系列独立実装レビューと 4-β cross-review を分けて実施する。
 
 ### 許諾条件（全て AND）
 
 1. **DbC 完了**: 該当 PR がカバーする `.agentops/tasks/<NN>-*.md` の DbC 完了条件をすべて満たしている。
-2. **別系列 frontier cross-review 通過**: 主 orchestrator とは異なる系列の frontier reviewer で `scripts/agentops delegate --to <reviewer> --role review_frontier --effort high --input <該当ファイル>` を実施済み、所見に **P0 / P1 が 0 件、または反映済み**。run 記録が `.agentops/runs/<timestamp>-<task-id>/` に残っている。reviewer 選定は **主 orchestrator と別系列（Anthropic ↔ OpenAI）** とする。
-   - 主 orchestrator が Claude Code (Anthropic 系) → reviewer は **Codex / OpenAI 系** (`--to codex`)
-   - 主 orchestrator が Codex (OpenAI 系) → reviewer は **Claude / Anthropic 系** (`--to claude`)
+2. **frontier review 通過**: 設計段階では主 orchestrator と別系列の frontier reviewer、実装段階では 4-α 同系列独立実装レビューと 4-β 実装担当と別系列の frontier reviewer を実施済み。`scripts/agentops delegate --to <reviewer> --role review_frontier --effort high --input <該当ファイル>` または対応する内部 `review_frontier` で実施し、所見に **P0 / P1 が 0 件、または反映済み**。run 記録が `.agentops/runs/<timestamp>-<task-id>/` に残っている。4-β の reviewer 選定は **実装担当と別系列（Anthropic ↔ OpenAI）** とする。
+   - 設計段階: 主 orchestrator が Claude Code (Anthropic 系) → reviewer は **Codex / OpenAI 系** (`--to codex`)
+   - 設計段階: 主 orchestrator が Codex (OpenAI 系) → reviewer は **Claude / Anthropic 系** (`--to claude`)
+   - 実装段階 4-β: 実装担当が Codex (OpenAI 系) → reviewer は **Claude / Anthropic 系** (`--to claude`)
+   - 実装段階 4-β: 実装担当が Claude Code (Anthropic 系) → reviewer は **Codex / OpenAI 系** (`--to codex`)
    - reviewer は修正指摘ごとに `kind: mechanical | design` ラベルを付与する。`kind: mechanical` (patch / 行番号 / 具体書き換え提示) は Claude が直接 patch、`kind: design` (抽象指摘) は Codex (run A) に再委譲。修正したらループ +1、修正者問わず。3 周目到達 → kind 不問で user 確認 (本許諾発動せず)。kind ラベル無し → 保守的に `design` 扱い。詳細は `rules/model-routing.md` (雛形) / `~/.claude/rules/model-routing.md` (反映) の 5 工程フロー節。
 3. **CI green**: GitHub Actions の fail 系 job（actionlint / yamllint / markdown-link-check が導入済みなら全 job、未導入なら自己検証で `python3 -m compileall tools` 等が exit 0）。
 4. **観察事実食い違いなし**: 着手時に裏取りした観察事実と現状に食い違いが新たに発生していない。

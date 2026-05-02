@@ -1,6 +1,6 @@
 # Claude Code Global Guidance Template
 
-このテンプレートは `~/.claude/CLAUDE.md` を生成するときの素材です。反映前に Claude Code の公式 docs、`claude --help`、既存の `~/.claude` 設定を確認してください。
+このテンプレートは `~/.claude/CLAUDE.md` を生成するときの素材です。反映前に Claude Code の公式 docs、`claude --help`、既存の `~/.claude` 設定を確認する。
 
 ## Working Agreements
 

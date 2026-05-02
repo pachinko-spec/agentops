@@ -98,7 +98,7 @@ export AGENTOPS_CLAUDE_CMD='claude {model_arg} --effort {effort} --print'
 
 template 変数の値は argv 注入を避けるため shell quoting してから `shlex.split` する。未知の `{var}` や format 修飾はエラーにし、利用可能な変数名を表示する。
 
-`--model` を組み立てる場合は `{model}` より `{model_arg}` を推奨する。`{model_arg}` は `--model <model>` 全体を生成し、`--model` 未指定時は空になるため、空の model 値で次の option を誤って消費しにくい。
+`--model` を組み立てる場合は `{model}` ではなく `{model_arg}` を第一候補にする。`{model_arg}` は `--model <model>` 全体を生成し、`--model` 未指定時は空になるため、空の model 値で次の option を誤って消費しにくい。
 
 依頼本文は既定では stdin で外部 CLI に渡す。stdin を読まない CLI に切り替える場合は、template 側で `{request_file}` を参照する。
 
