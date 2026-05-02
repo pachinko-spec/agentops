@@ -50,8 +50,9 @@ main session が Claude Code の場合の標準フロー:
 | 1 設計 / 計画 / 調査 | Claude (orchestrator_frontier) | user 意図汲み、harness spec、stop conditions、観察事実裏取り |
 | 2 設計レビュー (新設、高リスク plan で必須) | Codex (review_frontier、別 session) | 観察事実食い違い / Trinity 違反 / 別系列原則 / scope / 検証手段不足の検出 |
 | 3 実装 (run A) | Codex (coding_frontier) | コード + test 生成 + test 実行 |
-| 4 実装レビュー (run B) | Codex (review_frontier、別 session) | PR 差分の独立性、kind ラベル付与 |
-| 5 最終判断 | Claude (orchestrator) | diff + test result + cross-review 結果で採否判定 |
+| 4-α 同系列独立実装レビュー (run B) | Codex (review_frontier、別 session、cross-review ではない) | PR 差分の独立性、scope 単一性、kind ラベル付与 |
+| 4-β cross-review (別系列) | Claude (review_frontier、内部 sub-agent または別系列 reviewer) | 実装担当と別モデルファミリーの観点で意味変更、security、整合性を確認 |
+| 5 最終判断 | Claude (orchestrator) | diff + test result + 4-α / 4-β の結果で採否判定 |
 
 **発動条件**: 高リスク plan (durable instructions / catalog / AGENTS.md / global rules / migration / security / public API / 課金 / deploy 影響) では工程 2 (設計レビュー) を必須とする。軽微 plan (typo / docs 単純追記) では工程 2 任意。
 

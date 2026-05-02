@@ -84,15 +84,15 @@ durable instructions / catalog / AGENTS.md / global rules / migration / security
 1. **設計 / 計画 / 調査** — Claude orchestrator (orchestrator_frontier) が user 意図 / 観察事実裏取り / harness spec / stop conditions を整理する。
 2. **設計レビュー (新設、高リスク plan で必須)** — Codex review_frontier (**別 session**) に `scripts/agentops delegate --to codex --role review_frontier --effort high --input <plan>` で委譲する。**実 model id は反映先 catalog を参照する**。観察事実食い違い / Trinity 違反 / 別系列原則 / scope / 検証手段不足を検出する。
 3. **実装 (run A)** — Codex coding_frontier がコードと test 生成、test 実行を担う。
-4. **実装レビュー (run B)** — Codex review_frontier (別 session) が PR 差分を独立レビューし、kind ラベルを付与する。
-5. **最終判断** — Claude orchestrator が diff + test result + cross-review 結果の 3 点セットで採否判定する。
+4. **実装レビュー** — 4-α 同系列独立実装レビューでは Codex review_frontier (別 session、cross-review ではない) が PR 差分を独立レビューし、scope 単一性と kind ラベルを確認する。4-β cross-review では Claude review_frontier が実装担当 Codex と別モデルファミリーの観点で意味変更、security、整合性を確認する。
+5. **最終判断** — Claude orchestrator が diff + test result + 4-α / 4-β の結果で採否判定する。
 
 `kind: design` の処理は工程 2 (設計レビュー) と工程 4 (実装レビュー) で異なる。
 
 - 工程 2 設計段階の `kind: design` → orchestrator が判断する。**plan と実装が大幅乖離する場合のみ user 確認を再取得** (auto-mode 独走防止 guard)。軽微変更 (文言修正、節タイトル変更等) は orchestrator 判断で進めて良い。判断境界は `rules/model-routing.md` の「## 工程 2 のタイミング」節を参照。
 - 工程 4 実装段階の `kind: design` → orchestrator が **Codex coding_frontier (run A、別 session)** に再委譲する。
 
-軽微 plan (typo / docs 単純追記) では工程 2 を任意とし、4 工程フローでよい。
+軽微 plan (typo / docs 単純追記) では工程 2 を任意とし、4-α / 4-β の実施要否も変更リスクに応じて判断する。
 
 工程 2 のタイミングは plan 種別で異なる。**通常の高リスク plan** は user 承認後 (auto-mode) に Codex cross-review を実施する (`scripts/agentops delegate --to codex --role review_frontier --effort high --input <plan>`)。**特殊高リスク plan (cross-review 前提)** は user 提示前に Codex cross-review が必須。判定基準は `rules/model-routing.md` の「## 工程 2 のタイミング」節 (a)〜(c) を参照。詳細フローと「Plan agent (Claude 同系列内部レビュー) と cross-review (別モデルファミリー) の区別」「plan mode 制約」も同節を参照。
 

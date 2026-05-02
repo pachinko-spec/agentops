@@ -26,7 +26,7 @@ applies-to: global
 
 別 AI が読むときの指針:
 
-- **思想 (本 docs)** は `applies-to: global` で全 host / 全 project に適用される。グローバル設定 (`~/.claude/CLAUDE.md` / `~/.codex/AGENTS.md`) で参照しても良い。
+- **思想 (本 docs)** は `applies-to: global` で全 host / 全 project に適用される。グローバル設定 (`~/.claude/CLAUDE.md` / `~/.codex/AGENTS.md`) の参照対象にする。
 - **実装本体** (`tools/agentops_monitor`) を再実装しない。同等の通知が必要なら `agentops-watch notify --kind <kind>` を呼ぶ。
 - **利用層** (cron 行 / hook ファイル / shell script) は各 host / 各 repo の運用責任。本 docs は **起動契約** と雛形だけを規定し、実ファイル本体は別途配置する。
 - **環境変数の値** (Webhook URL) は host 側で export される `DISCORD_WEBHOOK_URL_{DAILLY,WEEKLY,MONTHLY,ANT_TIME}` を尊重する。本 docs / agentops repo に値そのものを書かない。
