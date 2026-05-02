@@ -46,6 +46,16 @@ Skill 名、description、tool 権限、supporting files は CLI ごとの公式
 | release-readiness-review | release 前の検証、rollback、docs を確認する | release 前 | project | [git-and-branch-policy](../rules/catalog.md) |
 | docs-review | README、API docs、runbook、handoff の更新漏れを確認する | docs 影響 | global | [language-policy](../rules/catalog.md) |
 
+## tooling adoption candidates
+
+agentops が提示する third-party tooling candidate (本 repo 内 Skill ではなく、外部 CLI / MCP / plugin の **採用候補**)。各 project の `skill project-localize-inventory` で候補を確認し、project 単位で採否を決定する。詳細は [docs/20-tooling-candidates.md](../docs/20-tooling-candidates.md)、雛形は `templates/projects/<tool>/` を参照。
+
+| 候補名 | 用途 | 発火条件 | 向き | 採否方針 | 関連 docs / 雛形 |
+| --- | --- | --- | --- | --- | --- |
+| sentrux | Rust 製 CLI / MCP server。52 言語のコード構造解析、循環依存・モジュール性スコア化、CI / pre-commit gate で AI 生成コードの構造劣化を自動 block | 中規模以上 / 層境界が明示された project の onboarding 時 / 既存 project の品質強化時 | global (候補)、project (実適用) | 強制導入なし、project ごとに判断 | [docs/20-tooling-candidates.md §sentrux](../docs/20-tooling-candidates.md)、雛形 `templates/projects/sentrux/.sentrux/rules.toml.template` |
+
+(Understand-Anything は 1 人 + AI 任せ運用との適合性が低いため暫定見送り。詳細は docs/20)
+
 ## docs / ops candidates
 
 | 候補名 | 用途 | 発火条件 | 向き | 関連 rule（代表） |
