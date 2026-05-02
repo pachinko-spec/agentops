@@ -1,0 +1,52 @@
+# sentrux rules template.
+# Copy this file to <project>/.sentrux/rules.toml and replace placeholder paths.
+# Current upstream sample uses [constraints], [[layers]], and [[boundaries]].
+
+[constraints]
+# No circular dependencies. Start strict; relax only with a project-local reason.
+max_cycles = 0
+
+# Max cyclomatic complexity per function.
+max_cc = 25
+
+# Max function length.
+max_fn_lines = 100
+
+# Set true for application repos once generated code and vendor paths are excluded.
+no_god_files = true
+
+# Layer definitions.
+# Higher order layers may depend on lower order layers only.
+# Replace these generic paths with project-specific paths:
+# - TypeScript / JavaScript: ["src/domain/*"], ["src/app/*"], ["src/ui/*"]
+# - Python: ["src/<package>/domain/*"], ["src/<package>/services/*"]
+# - Go: ["internal/domain/*"], ["internal/app/*"], ["cmd/*"]
+# - PHP: ["app/Domain/*"], ["app/Application/*"], ["app/Http/*"]
+
+[[layers]]
+name = "core"
+paths = ["src/core/*"]
+order = 0
+
+[[layers]]
+name = "app"
+paths = ["src/app/*"]
+order = 1
+
+[[layers]]
+name = "interface"
+paths = ["src/interface/*"]
+order = 2
+
+# Boundary rules.
+# Use boundaries for forbidden shortcuts that layer order alone cannot express.
+
+[[boundaries]]
+from = "src/interface/*"
+to = "src/core/internal/*"
+reason = "Interface layer must not depend on core internals directly."
+
+[[boundaries]]
+from = "src/core/*"
+to = "src/app/*"
+reason = "Core layer must not depend on application orchestration."
