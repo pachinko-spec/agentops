@@ -77,6 +77,8 @@ Claude Code 固有の補足は同階層の `CLAUDE.md` にあります。`CLAUDE
 
 **設計段階 cross-review (高リスク plan で必須)**: durable instructions / catalog / AGENTS.md / global rules / migration / security / public API / 課金 / deploy 影響を持つ plan は、**user 承認後 / 実装着手前**に主 orchestrator と別系列の frontier reviewer (主 Claude → Codex、主 Codex → Claude) に設計レビューを委譲し、P0/P1=0 を確認する。
 
+**Phase ownership lint (全 plan で実施)**: plan 作成直後、plan 提示前に、Phase 詳細表の担当列と Phase 担当宣言欄の存在だけを軽量モデルまたは Plan agent で確認する。cross-review とは分離し、記載漏れがあれば orchestrator が補完してから次工程へ進む。
+
 **通常運用** (大半の高リスク plan):
 
 1. orchestrator が plan 作成 (plan mode 中、Plan agent 内部レビューで磨く)

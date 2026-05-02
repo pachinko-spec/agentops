@@ -2,10 +2,16 @@
 
 parent_plan: <yyyy-mm-dd-slug>
 status: pending
+phase: <phase number or name>
+担当: <model or CLI> (<role>)
 
 ## 実行内容
 
 - 作業内容。
+
+## Phase 担当宣言
+
+- Phase X — 担当: <model or CLI> (<role>)
 
 ## 完了条件
 

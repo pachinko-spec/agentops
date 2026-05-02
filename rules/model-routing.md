@@ -66,6 +66,35 @@ main session が Claude Code の場合の標準フロー:
 
 reviewer 出力期待値 (kind ラベル / unified diff / `artifacts/review.md` 保存) は `scripts/agentops delegate --to <reviewer> --role review_frontier` 実行時に wrapper が自動付与する。詳細は `docs/10-cli-wrapper.md` の `## Reviewer 出力期待値 (review_frontier)` 節を参照。
 
+## 実装着手前チェックポイント (Phase 担当宣言)
+
+plan ファイルの Phase 詳細表には **担当** 列を必ず置く。最低限、Phase / work area / 担当 の 3 列以上を持たせ、各 Phase を誰がどのロールで担当するかを実装前に読める状態にする。
+
+各 Phase の着手前に、担当エージェントは次の形で 1 行宣言してから Edit / Write / MultiEdit などのファイル編集 tool を呼ぶ。
+
+```text
+Phase X — 担当: <model or CLI> (<role>)
+```
+
+宣言なしに編集 tool を呼んだ場合は 5 工程フロー違反として停止し、orchestrator が記録と担当整理を補完してから再開する。
+
+1 行宣言の記録先は、通常の main session では `.agentops/task-plans/current.md` の Phase 着手記録欄、委譲 run では `.agentops/runs/<run_id>/request.md` の冒頭とする。
+
+## Phase ownership lint (記載漏れ専用 check)
+
+Phase ownership lint は、plan / task の構造に担当情報が存在するかだけを確認する軽量 check として扱う。設計の良し悪し、scope 判断、Trinity 違反、検証方針の妥当性、実行時の 1 行宣言遵守は対象外とする。実行時の宣言遵守は orchestrator の self-discipline と、将来の hook 強化に依存する。
+
+確認観点は次の存在確認に限定する。
+
+- plan ファイルの Phase 詳細表に **担当** 列がある。
+- plan / task ファイルに Phase 担当宣言欄がある。
+
+担当は軽量モデルを原則とし、`docs_agent` / `coding_fast` / `research_fast`、または Plan agent (同系列内部レビュー) のいずれかを使う。高リスク plan でも `review_frontier` cross-review にこの観点を兼任させない。
+
+実施タイミングは plan ファイル作成直後、plan 提示前とし、全 plan 共通で行う。低リスク plan で cross-review を skip する場合でも Phase ownership lint は省略しない。
+
+欠落があれば orchestrator に差し戻し、orchestrator が plan / task の担当列または宣言欄を補完してから次工程へ進む。高リスク plan の cross-review prompt には「ownership lint は別タスクで実施済」と明記し、`review_frontier` は本来の設計レビュー観点に専念させる。
+
 ## Plan agent と cross-review の区別
 
 5 工程フローの工程 2 (設計レビュー) を実施する際、以下 2 種を混同しないこと。
