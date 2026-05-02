@@ -43,6 +43,7 @@ Skill 名、description、tool 権限、supporting files は CLI ごとの公式
 | performance-review | 性能劣化、無駄な I/O、bundle、query をレビューする | performance 懸念 | project | [review-policy](../rules/catalog.md) |
 | dependency-supply-chain-review | 新規依存、license、supply chain をレビューする | dependency 追加 | global | [secret-policy](../rules/catalog.md) |
 | cross-review | 主 orchestrator とは別 CLI / 別モデルファミリーの frontier reviewer で確認する | 高リスク変更、新機能、リファクタ、依存追加、API 契約変更、デプロイ影響、レビュー修正後 | global | [review-policy](../rules/catalog.md) |
+| phase-ownership-lint | plan / task の Phase 詳細表に担当列と Phase 担当宣言欄があるかだけを軽量モデルで確認する。実 SKILL.md 配置は別 plan で扱う | plan 作成直後、plan 提示前 | global | [phase-owner-declaration](../rules/catalog.md) |
 | release-readiness-review | release 前の検証、rollback、docs を確認する | release 前 | project | [git-and-branch-policy](../rules/catalog.md) |
 | docs-review | README、API docs、runbook、handoff の更新漏れを確認する | docs 影響 | global | [language-policy](../rules/catalog.md) |
 
