@@ -93,7 +93,7 @@ Claude Code 固有の補足は同階層の `CLAUDE.md` にあります。`CLAUDE
 ### 許諾条件（全て AND）
 
 1. **DbC 完了**: 該当 PR がカバーする `.agentops/tasks/<NN>-*.md` の DbC 完了条件をすべて満たしている。
-2. **frontier review 通過**: 設計段階では主 orchestrator と別系列の frontier reviewer、実装段階では 4-α 同系列独立実装レビューと 4-β 実装担当と別系列の frontier reviewer を実施済み。`scripts/agentops delegate --to <reviewer> --role review_frontier --effort high --input <該当ファイル>` または対応する内部 `review_frontier` で実施し、所見に **P0 / P1 が 0 件、または反映済み**。run 記録が `.agentops/runs/<timestamp>-<task-id>/` に残っている。4-β の reviewer 選定は **実装担当と別系列（Anthropic ↔ OpenAI）** とする。
+2. **frontier review 通過**: 設計段階では主 orchestrator と別系列の frontier reviewer、実装段階では 4-α (同系列独立実装レビュー) と 4-β (実装担当と別系列の frontier reviewer) を両方実施済み。`scripts/agentops delegate --to <reviewer> --role review_frontier --effort high --input <該当ファイル>` または対応する内部 `review_frontier` で実施し、所見に **P0 / P1 が 0 件、または反映済み**。run 記録が `.agentops/runs/<timestamp>-<task-id>/` に残っている。4-β の reviewer 選定は **実装担当と別系列（Anthropic ↔ OpenAI）** とする。
    - 設計段階: 主 orchestrator が Claude Code (Anthropic 系) → reviewer は **Codex / OpenAI 系** (`--to codex`)
    - 設計段階: 主 orchestrator が Codex (OpenAI 系) → reviewer は **Claude / Anthropic 系** (`--to claude`)
    - 実装段階 4-β: 実装担当が Codex (OpenAI 系) → reviewer は **Claude / Anthropic 系** (`--to claude`)

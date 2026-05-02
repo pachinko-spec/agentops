@@ -6,6 +6,7 @@
 
 | 完了日 | plan-id | サマリ |
 |---|---|---|
+| 2026-05-02 | [mid-term-c-imperative-tone](2026-05-02-mid-term-c-imperative-tone/plan.md) | 中期 C: 文末曖昧表現 8 件の命令形化 + 5 工程フロー Phase 4 役割分離 (4-α 同系列独立 + 4-β cross-review) |
 | 2026-05-02 | [phase-ownership-rule](2026-05-02-phase-ownership-rule/plan.md) | Phase 担当列必須化 + Phase ownership lint 軽量専用 check 導入 |
 | 2026-05-02 | [discord-notify-cleanup-and-sentrux-catalog](2026-05-02-discord-notify-cleanup-and-sentrux-catalog/plan.md) | Discord 通知整理 (lifecycle 廃止 + 運用ルール再掲削除) + sentrux 導入カタログ追加 (docs/20 / skills/catalog / templates/projects/sentrux 雛形)。本セッション内で 5 工程フロー違反 + review-policy 解釈ミスが発生し、Phase 2 全 Codex 委譲 + sandbox 制約による P1#1 例外受け入れ + 中長期再発防止策 5 本立てを別 plan 化として handoff 記録 (`archive/2026-05-02-discord-notify-cleanup-and-sentrux-catalog/handoffs/2026-05-02-5-process-flow-violation-and-prevention.md`)。 |
 | 2026-05-02 | [rule-strengthen-post-merge-1pr-scope](2026-05-02-rule-strengthen-post-merge-1pr-scope/plan.md) | post-merge 整理 1 PR scope 完結原則 + cross-review タイミング整理 (Plan agent vs cross-review 区別、通常運用 vs 特殊運用境界) を rule / docs / catalog / AGENTS.md に明文化 |

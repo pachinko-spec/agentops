@@ -32,9 +32,9 @@ Phase 0 (起票準備) → Phase 1 (対象選定) → Phase 1.5 (ownership lint)
 - [x] Phase 1.5 — 担当: docs_agent — 完了: 2026-05-02 (Phase ownership lint OK)
 - [x] Phase 2 — 担当: Codex (review_frontier, effort high) — 完了: 2026-05-02 (P0=0, P1=3, P2=1、kind:design 軽微変更で orchestrator 反映、ループ 1 周目)
 - [x] Phase 3 — 担当: Codex (coding_frontier, effort high) — 完了: 2026-05-02
-- [ ] Phase 4-α — 担当: (未着手)
-- [ ] Phase 4-β — 担当: (未着手)
-- [ ] Phase 4.5 — 担当: (未着手)
+- [x] Phase 4-α — 担当: Codex (review_frontier, effort high) — 完了: 2026-05-02 (P0=P1=P2=P3=0、指摘なし)
+- [x] Phase 4-β — 担当: Claude (review_frontier internal, agentops-reviewer) — 完了: 2026-05-02 (P0=0/P1=0/P2=2/P3=2、merge 可能、P2-1 mechanical patch 反映済、ループ 1 周目)
+- [ ] Phase 4.5 — 担当: orchestrator (Claude) (着手中)
 - [ ] Phase 5 — 担当: (未着手)
 
 ## 親 task
